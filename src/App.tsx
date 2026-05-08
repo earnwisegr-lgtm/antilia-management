@@ -1,5 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
+import { LanguageProvider } from './contexts/LanguageContext';
 import ReservationsList from './components/Reservations/ReservationsList';
 import BookingWizard from './components/Booking/BookingWizard';
 import {
@@ -26,7 +27,7 @@ import {
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 
-function App() {
+function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showBookingWizard, setShowBookingWizard] = useState(false);
@@ -1337,6 +1338,14 @@ function App() {
         </main>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   );
 }
 
