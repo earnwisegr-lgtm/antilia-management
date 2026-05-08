@@ -357,7 +357,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                     <EyeIcon className="h-4 w-4 mr-1" />
                     Προβολή
                   </button>
-                  <ContractGenerator data={getContractData(reservation)} language="el" />
+                  <ContractGenerator data={getContractData(reservation)}  />
                   {reservation.status !== 'cancelled' && reservation.status !== 'completed' && (
                     <button
                       className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50 transition-colors"
@@ -506,7 +506,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
 
               <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
                 <div className="flex space-x-2">
-                  <ContractGenerator data={getContractData(viewReservation)} language="el" />
+                  <ContractGenerator data={getContractData(viewReservation)}  />
                   {viewReservation.status !== 'cancelled' && viewReservation.status !== 'completed' && (
                     <button
                       onClick={() => {
