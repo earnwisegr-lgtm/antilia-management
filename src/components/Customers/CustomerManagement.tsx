@@ -89,6 +89,9 @@ const CustomerManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div className="p-2 bg-yellow-100 border border-yellow-300 rounded text-xs font-mono text-yellow-800">
+        CUSTOMERS SOURCE: DATABASE | count: {customers.length}
+      </div>
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">{t('customers')}</h1>
       </div>
