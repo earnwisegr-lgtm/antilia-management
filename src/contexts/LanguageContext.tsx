@@ -49,7 +49,7 @@ const translations = {
     availableVehicles: 'Διαθέσιμα Οχήματα',
     
     // Step 3
-    pricing: 'Τιμολόγηση',
+    pricingSection: 'Τιμολόγηση',
     dailyRate: 'Ημερήσιο Τέλος',
     insurance: 'Ασφάλεια',
     basic: 'Βασική',
@@ -141,7 +141,7 @@ const translations = {
     availableVehicles: 'Available Vehicles',
     
     // Step 3
-    pricing: 'Pricing',
+    pricingSection: 'Pricing',
     dailyRate: 'Daily Rate',
     insurance: 'Insurance',
     basic: 'Basic',
