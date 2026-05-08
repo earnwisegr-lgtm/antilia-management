@@ -252,7 +252,7 @@ const ContractGenerator: React.FC<ContractGeneratorProps> = ({ data }) => {
       doc.setFontSize(8);
 
       const terms = [
-        '1. The vehicle is delivered with a full fuel tank and must be returned at the same level.',
+        '1. The vehicle must be returned with the same fuel level provided at pickup.',
         '2. The renter is fully responsible for any damage incurred during the rental period.',
         '3. Late returns are subject to a charge of EUR 10.00 per hour.',
         '4. Smoking and pets are strictly prohibited inside the vehicle.',
