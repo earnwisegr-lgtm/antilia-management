@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { reservationService } from '../../lib/database';
+import { reservationService, customerService, stationService } from '../../lib/database';
 import { format } from 'date-fns';
 import { el } from 'date-fns/locale';
 import {
   EyeIcon,
-  DocumentTextIcon,
   TruckIcon,
   CheckIcon,
   TrashIcon,
@@ -13,9 +12,10 @@ import {
   ArrowPathIcon,
   MagnifyingGlassIcon,
   CalendarDaysIcon,
-  CurrencyEuroIcon
+  PencilSquareIcon
 } from '@heroicons/react/24/outline';
 import ContractGenerator from '../PDF/ContractGenerator';
+import type { Station } from '../../types';
 
 interface ReservationRow {
   id: string;
@@ -59,6 +59,23 @@ interface ReservationRow {
   } | null;
 }
 
+interface EditFormData {
+  customerName: string;
+  phone: string;
+  email: string;
+  country: string;
+  licenseNumber: string;
+  birthDate: string;
+  pickupDate: string;
+  pickupTime: string;
+  returnDate: string;
+  returnTime: string;
+  pickupStationId: string;
+  returnStationId: string;
+  insuranceType: string;
+  notes: string;
+}
+
 interface ReservationsListProps {
   onCheckOut?: (reservationId: string) => void;
   onCheckIn?: (reservationId: string) => void;
@@ -72,8 +89,16 @@ const statusOptions: { value: string; labelEl: string }[] = [
   { value: 'cancelled', labelEl: 'Ακυρωμένη' }
 ];
 
+function splitDateTime(isoStr: string): { date: string; time: string } {
+  if (!isoStr) return { date: '', time: '09:00' };
+  const d = new Date(isoStr);
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return { date, time };
+}
+
 const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheckIn, refreshTrigger }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [reservations, setReservations] = useState<ReservationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -84,6 +109,13 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   const [actionError, setActionError] = useState('');
   const [changingStatus, setChangingStatus] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Edit mode
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EditFormData | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [stations, setStations] = useState<Station[]>([]);
 
   const fetchReservations = useCallback(async () => {
     setLoading(true);
@@ -102,6 +134,10 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   useEffect(() => {
     fetchReservations();
   }, [fetchReservations, refreshTrigger]);
+
+  useEffect(() => {
+    stationService.getAll().then(setStations).catch(() => {});
+  }, []);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setChangingStatus(id);
@@ -136,6 +172,74 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
       setActionError('Αποτυχία διαγραφής κράτησης.');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const startEditing = (reservation: ReservationRow) => {
+    const pickup = splitDateTime(reservation.pickup_date);
+    const ret = splitDateTime(reservation.return_date);
+    setEditForm({
+      customerName: reservation.customer?.name || '',
+      phone: reservation.customer?.phone || '',
+      email: reservation.customer?.email || '',
+      country: reservation.customer?.country || '',
+      licenseNumber: reservation.customer?.license_number || '',
+      birthDate: reservation.customer?.birth_date || '',
+      pickupDate: pickup.date,
+      pickupTime: pickup.time,
+      returnDate: ret.date,
+      returnTime: ret.time,
+      pickupStationId: reservation.pickup_station_id || '',
+      returnStationId: reservation.return_station_id || '',
+      insuranceType: reservation.insurance_type || 'basic',
+      notes: reservation.notes || ''
+    });
+    setSaveError('');
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+    setEditForm(null);
+    setSaveError('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!viewReservation || !editForm) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      // Update customer
+      if (viewReservation.customer?.id) {
+        await customerService.update(viewReservation.customer.id, {
+          name: editForm.customerName,
+          phone: editForm.phone,
+          email: editForm.email,
+          country: editForm.country,
+          license_number: editForm.licenseNumber,
+          birth_date: editForm.birthDate
+        });
+      }
+
+      // Update reservation
+      await reservationService.update(viewReservation.id, {
+        pickup_date: `${editForm.pickupDate}T${editForm.pickupTime}:00`,
+        return_date: `${editForm.returnDate}T${editForm.returnTime}:00`,
+        pickup_station_id: editForm.pickupStationId,
+        return_station_id: editForm.returnStationId,
+        insurance_type: editForm.insuranceType,
+        notes: editForm.notes
+      });
+
+      setEditing(false);
+      setEditForm(null);
+      setViewReservation(null);
+      await fetchReservations();
+    } catch (err) {
+      console.error('Save failed:', err);
+      setSaveError('Αποτυχία αποθήκευσης. Δοκιμάστε ξανά.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -206,7 +310,6 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
     }
   };
 
-  // Loading state
   if (loading && reservations.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -216,7 +319,6 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
     );
   }
 
-  // Error state
   if (error && reservations.length === 0) {
     return (
       <div className="text-center py-12">
@@ -357,7 +459,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                     <EyeIcon className="h-4 w-4 mr-1" />
                     Προβολή
                   </button>
-                  <ContractGenerator data={getContractData(reservation)}  />
+                  <ContractGenerator data={getContractData(reservation)} />
                   {reservation.status !== 'cancelled' && reservation.status !== 'completed' && (
                     <button
                       className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50 transition-colors"
@@ -396,138 +498,346 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
         ))}
       </div>
 
-      {/* View Reservation Modal */}
+      {/* View/Edit Reservation Modal */}
       {viewReservation && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20">
-            <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setViewReservation(null)} />
+            <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => { setViewReservation(null); cancelEditing(); }} />
             <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-auto z-10">
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">Λεπτομέρειες Κράτησης</h2>
-                <button onClick={() => setViewReservation(null)} className="text-gray-400 hover:text-gray-600">
+                <h2 className="text-lg font-medium text-gray-900">
+                  {editing ? 'Επεξεργασία Κράτησης' : 'Λεπτομέρειες Κράτησης'}
+                </h2>
+                <button onClick={() => { setViewReservation(null); cancelEditing(); }} className="text-gray-400 hover:text-gray-600">
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
-                {/* Status */}
-                <div className="flex items-center justify-between">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(viewReservation.status)}`}>
-                    {getStatusLabel(viewReservation.status)}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <label className="text-sm text-gray-600">Αλλαγή κατάστασης:</label>
-                    <select
-                      value={viewReservation.status}
-                      onChange={(e) => handleStatusChange(viewReservation.id, e.target.value)}
-                      disabled={changingStatus === viewReservation.id}
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {statusOptions.map(s => (
-                        <option key={s.value} value={s.value}>{s.labelEl}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+              <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                {!editing ? (
+                  <>
+                    {/* View Mode */}
+                    <div className="flex items-center justify-between">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(viewReservation.status)}`}>
+                        {getStatusLabel(viewReservation.status)}
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <label className="text-sm text-gray-600">Αλλαγή κατάστασης:</label>
+                        <select
+                          value={viewReservation.status}
+                          onChange={(e) => handleStatusChange(viewReservation.id, e.target.value)}
+                          disabled={changingStatus === viewReservation.id}
+                          className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {statusOptions.map(s => (
+                            <option key={s.value} value={s.value}>{s.labelEl}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
 
-                {/* Customer */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Πελάτης</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                    <p className="text-sm text-gray-900 font-medium">{viewReservation.customer?.name || '-'}</p>
-                    <p className="text-sm text-gray-600">{viewReservation.customer?.phone || '-'}</p>
-                    <p className="text-sm text-gray-600">{viewReservation.customer?.email || '-'}</p>
-                    <p className="text-sm text-gray-600">{viewReservation.customer?.country || '-'}</p>
-                    {viewReservation.customer?.license_number && (
-                      <p className="text-sm text-gray-600">Άδεια: {viewReservation.customer.license_number}</p>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-2">Πελάτης</h3>
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                        <p className="text-sm text-gray-900 font-medium">{viewReservation.customer?.name || '-'}</p>
+                        <p className="text-sm text-gray-600">{viewReservation.customer?.phone || '-'}</p>
+                        <p className="text-sm text-gray-600">{viewReservation.customer?.email || '-'}</p>
+                        <p className="text-sm text-gray-600">{viewReservation.customer?.country || '-'}</p>
+                        {viewReservation.customer?.license_number && (
+                          <p className="text-sm text-gray-600">Άδεια: {viewReservation.customer.license_number}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-2">Όχημα</h3>
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                        <p className="text-sm text-gray-900 font-medium">
+                          {viewReservation.vehicle
+                            ? `${viewReservation.vehicle.brand} ${viewReservation.vehicle.model} (${viewReservation.vehicle.plate})`
+                            : `Κατηγορία ${viewReservation.category}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Παραλαβή</h3>
+                        <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                          <p className="text-sm text-gray-900">{formatDateStr(viewReservation.pickup_date)}</p>
+                          <p className="text-sm text-gray-600">{viewReservation.pickup_station?.name || '-'}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Παράδοση</h3>
+                        <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                          <p className="text-sm text-gray-900">{formatDateStr(viewReservation.return_date)}</p>
+                          <p className="text-sm text-gray-600">{viewReservation.return_station?.name || '-'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-2">Τιμολόγηση</h3>
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Ημερήσιο τέλος</span>
+                          <span className="text-gray-900">{'\u20AC'}{Number(viewReservation.daily_rate || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Ασφάλεια ({viewReservation.insurance_type})</span>
+                          <span className="text-gray-900">{'\u20AC'}{Number(viewReservation.insurance_rate || 0).toFixed(2)}/ημέρα</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold border-t pt-2">
+                          <span>Σύνολο</span>
+                          <span className="text-green-600">{'\u20AC'}{Number(viewReservation.total_amount || 0).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {viewReservation.notes && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Σημειώσεις</h3>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <p className="text-sm text-gray-700">{viewReservation.notes}</p>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Edit Mode */}
+                    {editForm && (
+                      <div className="space-y-5">
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-700 mb-3">Στοιχεία Πελάτη</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Όνομα</label>
+                              <input
+                                type="text"
+                                value={editForm.customerName}
+                                onChange={(e) => setEditForm({ ...editForm, customerName: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Τηλέφωνο</label>
+                              <input
+                                type="tel"
+                                value={editForm.phone}
+                                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Email</label>
+                              <input
+                                type="email"
+                                value={editForm.email}
+                                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Χώρα</label>
+                              <input
+                                type="text"
+                                value={editForm.country}
+                                onChange={(e) => setEditForm({ ...editForm, country: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Αρ. Άδειας</label>
+                              <input
+                                type="text"
+                                value={editForm.licenseNumber}
+                                onChange={(e) => setEditForm({ ...editForm, licenseNumber: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Ημ. Γέννησης</label>
+                              <input
+                                type="date"
+                                value={editForm.birthDate}
+                                onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                {/* Vehicle / Category */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Όχημα</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                    <p className="text-sm text-gray-900 font-medium">
-                      {viewReservation.vehicle
-                        ? `${viewReservation.vehicle.brand} ${viewReservation.vehicle.model} (${viewReservation.vehicle.plate})`
-                        : `Κατηγορία ${viewReservation.category}`}
-                    </p>
-                  </div>
-                </div>
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-700 mb-3">Ημερομηνίες & Σταθμοί</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Ημ. Παραλαβής</label>
+                              <input
+                                type="date"
+                                value={editForm.pickupDate}
+                                onChange={(e) => setEditForm({ ...editForm, pickupDate: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Ώρα Παραλαβής</label>
+                              <input
+                                type="time"
+                                value={editForm.pickupTime}
+                                onChange={(e) => setEditForm({ ...editForm, pickupTime: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Ημ. Παράδοσης</label>
+                              <input
+                                type="date"
+                                value={editForm.returnDate}
+                                onChange={(e) => setEditForm({ ...editForm, returnDate: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Ώρα Παράδοσης</label>
+                              <input
+                                type="time"
+                                value={editForm.returnTime}
+                                onChange={(e) => setEditForm({ ...editForm, returnTime: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Σταθμός Παραλαβής</label>
+                              <select
+                                value={editForm.pickupStationId}
+                                onChange={(e) => setEditForm({ ...editForm, pickupStationId: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">-- Επιλέξτε --</option>
+                                {stations.map(st => (
+                                  <option key={st.id} value={st.id}>{st.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Σταθμός Παράδοσης</label>
+                              <select
+                                value={editForm.returnStationId}
+                                onChange={(e) => setEditForm({ ...editForm, returnStationId: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">-- Επιλέξτε --</option>
+                                {stations.map(st => (
+                                  <option key={st.id} value={st.id}>{st.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
 
-                {/* Dates & Stations */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Παραλαβή</h3>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                      <p className="text-sm text-gray-900">{formatDateStr(viewReservation.pickup_date)}</p>
-                      <p className="text-sm text-gray-600">{viewReservation.pickup_station?.name || '-'}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Παράδοση</h3>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                      <p className="text-sm text-gray-900">{formatDateStr(viewReservation.return_date)}</p>
-                      <p className="text-sm text-gray-600">{viewReservation.return_station?.name || '-'}</p>
-                    </div>
-                  </div>
-                </div>
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-700 mb-3">Ασφάλεια</h3>
+                          <div className="flex space-x-4">
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                name="editInsurance"
+                                value="basic"
+                                checked={editForm.insuranceType === 'basic'}
+                                onChange={() => setEditForm({ ...editForm, insuranceType: 'basic' })}
+                                className="mr-2"
+                              />
+                              <span className="text-sm">Basic</span>
+                            </label>
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                name="editInsurance"
+                                value="full"
+                                checked={editForm.insuranceType === 'full'}
+                                onChange={() => setEditForm({ ...editForm, insuranceType: 'full' })}
+                                className="mr-2"
+                              />
+                              <span className="text-sm">Full</span>
+                            </label>
+                          </div>
+                        </div>
 
-                {/* Pricing */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Τιμολόγηση</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Ημερήσιο τέλος</span>
-                      <span className="text-gray-900">{'\u20AC'}{Number(viewReservation.daily_rate || 0).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Ασφάλεια ({viewReservation.insurance_type})</span>
-                      <span className="text-gray-900">{'\u20AC'}{Number(viewReservation.insurance_rate || 0).toFixed(2)}/ημέρα</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-bold border-t pt-2">
-                      <span>Σύνολο</span>
-                      <span className="text-green-600">{'\u20AC'}{Number(viewReservation.total_amount || 0).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Σημειώσεις</label>
+                          <textarea
+                            value={editForm.notes}
+                            onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                            rows={3}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
 
-                {/* Notes */}
-                {viewReservation.notes && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Σημειώσεις</h3>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-700">{viewReservation.notes}</p>
-                    </div>
-                  </div>
+                        {saveError && (
+                          <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                            {saveError}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
               <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
-                <div className="flex space-x-2">
-                  <ContractGenerator data={getContractData(viewReservation)}  />
-                  {viewReservation.status !== 'cancelled' && viewReservation.status !== 'completed' && (
+                {!editing ? (
+                  <>
+                    <div className="flex space-x-2">
+                      <ContractGenerator data={getContractData(viewReservation)} />
+                      <button
+                        onClick={() => startEditing(viewReservation)}
+                        className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 transition-colors"
+                      >
+                        <PencilSquareIcon className="h-4 w-4 mr-2" />
+                        Επεξεργασία
+                      </button>
+                      {viewReservation.status !== 'cancelled' && viewReservation.status !== 'completed' && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Θέλετε σίγουρα να ακυρώσετε αυτή την κράτηση;')) {
+                              handleDelete(viewReservation.id);
+                            }
+                          }}
+                          disabled={deleting === viewReservation.id}
+                          className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 transition-colors"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-2" />
+                          {deleting === viewReservation.id ? 'Διαγραφή...' : 'Διαγραφή'}
+                        </button>
+                      )}
+                    </div>
                     <button
-                      onClick={() => {
-                        if (window.confirm('Θέλετε σίγουρα να ακυρώσετε αυτή την κράτηση;')) {
-                          handleDelete(viewReservation.id);
-                        }
-                      }}
-                      disabled={deleting === viewReservation.id}
-                      className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 transition-colors"
+                      onClick={() => setViewReservation(null)}
+                      className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                     >
-                      <TrashIcon className="h-4 w-4 mr-2" />
-                      {deleting === viewReservation.id ? 'Διαγραφή...' : 'Διαγραφή'}
+                      Κλείσιμο
                     </button>
-                  )}
-                </div>
-                <button
-                  onClick={() => setViewReservation(null)}
-                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Κλείσιμο
-                </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={cancelEditing}
+                      disabled={saving}
+                      className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                      Ακύρωση
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={saving}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                      {saving ? 'Αποθήκευση...' : 'Αποθήκευση'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
