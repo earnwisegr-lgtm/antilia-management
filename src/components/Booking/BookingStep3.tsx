@@ -46,11 +46,17 @@ const BookingStep3: React.FC<BookingStep3Props> = ({ data, pricing, updateData }
     });
   };
 
+  const getFullInsuranceRate = (): number => {
+    if (!data.pickupDate) return 10;
+    const month = parseInt(data.pickupDate.split('-')[1], 10);
+    if (month === 7 || month === 8) return 15;
+    return 10;
+  };
+
+  const fullInsuranceRate = getFullInsuranceRate();
+
   const updateInsurance = (type: 'basic' | 'full') => {
-    updateData({
-      insuranceType: type,
-      insuranceRate: type === 'full' ? 15 : 0
-    });
+    updateData({ insuranceType: type });
   };
 
   return (
@@ -151,7 +157,7 @@ const BookingStep3: React.FC<BookingStep3Props> = ({ data, pricing, updateData }
                     onChange={() => updateInsurance('full')}
                     className="mr-1"
                   />
-                  {t('full')} (€15/ημέρα)
+                  {t('full')} (€{fullInsuranceRate}/ημέρα)
                 </label>
               </div>
             </div>

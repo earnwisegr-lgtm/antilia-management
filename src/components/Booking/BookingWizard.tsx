@@ -23,6 +23,15 @@ const daysBetweenUTC = (start: string, end: string) => {
   return Math.max(1, Math.round((e - s) / 86400000));
 };
 
+// Seasonal full-insurance rate based on pickup month
+// Apr-Jun, Sep-Oct = €10/day; Jul-Aug = €15/day
+const getFullInsuranceRate = (pickupDate: string): number => {
+  if (!pickupDate) return 10;
+  const month = parseInt(pickupDate.split('-')[1], 10);
+  if (month === 7 || month === 8) return 15;
+  return 10;
+};
+
 interface BookingData {
   pickupDate: string;
   returnDate: string;
@@ -61,43 +70,54 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const [bookingData, setBookingData] = useState<BookingData>({
-    pickupDate: formatDate(today),      // ΣΗΜΕΡΑ
-    returnDate: formatDate(tomorrow),   // ΑΥΡΙΟ
-    pickupTime: '09:00',
-    returnTime: '09:00',
-    pickupStation: '',
-    returnStation: '',
-    category: '',
-    dailyRate: 0,
-    insuranceType: 'full',
-    insuranceRate: 15,
-    extras: {},
-    customer: {
-      name: '',
-      phone: '',
-      email: '',
-      country: '',
-      licenseNumber: '',
-      birthDate: '',
-      source: 'walk-in'
-    },
-    notes: ''
+  const [bookingData, setBookingData] = useState<BookingData>(() => {
+    const pickupStr = formatDate(today);
+    return {
+      pickupDate: pickupStr,
+      returnDate: formatDate(tomorrow),
+      pickupTime: '09:00',
+      returnTime: '09:00',
+      pickupStation: '',
+      returnStation: '',
+      category: '',
+      dailyRate: 0,
+      insuranceType: 'full',
+      insuranceRate: getFullInsuranceRate(pickupStr),
+      extras: {},
+      customer: {
+        name: '',
+        phone: '',
+        email: '',
+        country: '',
+        licenseNumber: '',
+        birthDate: '',
+        source: 'walk-in'
+      },
+      notes: ''
+    };
   });
 
   const updateBookingData = (updates: Partial<BookingData>) => {
-    setBookingData(prev => ({
-      ...prev,
-      ...updates,
-      customer: {
-        ...prev.customer,
-        ...(updates.customer || {})
-      },
-      extras: {
-        ...prev.extras,
-        ...(updates.extras || {})
+    setBookingData(prev => {
+      const next = {
+        ...prev,
+        ...updates,
+        customer: {
+          ...prev.customer,
+          ...(updates.customer || {})
+        },
+        extras: {
+          ...prev.extras,
+          ...(updates.extras || {})
+        }
+      };
+      // Recalculate insurance rate when pickupDate or insuranceType changes
+      if (updates.pickupDate || updates.insuranceType) {
+        const rate = getFullInsuranceRate(next.pickupDate);
+        next.insuranceRate = next.insuranceType === 'full' ? rate : 0;
       }
-    }));
+      return next;
+    });
   };
 
   // Pricing calculations with useMemo
