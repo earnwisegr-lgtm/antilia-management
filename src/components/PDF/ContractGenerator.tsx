@@ -39,21 +39,39 @@ interface ContractGeneratorProps {
   data: ContractData;
 }
 
-const FONT_URL = 'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans@latest/greek-400-normal.ttf';
-
 let cachedFontBase64: string | null = null;
+let fontLoadFailed = false;
 
-async function loadFont(): Promise<string> {
+async function loadUnicodeFont(): Promise<string | null> {
+  if (fontLoadFailed) return null;
   if (cachedFontBase64) return cachedFontBase64;
-  const response = await fetch(FONT_URL);
-  const buffer = await response.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+
+  try {
+    const response = await fetch(
+      'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans@latest/greek-400-normal.ttf'
+    );
+    if (!response.ok) throw new Error('Font fetch failed');
+    const buffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    cachedFontBase64 = btoa(binary);
+    return cachedFontBase64;
+  } catch {
+    fontLoadFailed = true;
+    return null;
   }
-  cachedFontBase64 = btoa(binary);
-  return cachedFontBase64;
+}
+
+function registerFont(doc: jsPDF, fontBase64: string) {
+  doc.addFileToVFS('NotoSans-Regular.ttf', fontBase64);
+  doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+}
+
+function hasNonLatinChars(text: string): boolean {
+  return /[^\u0000-\u024F]/.test(text);
 }
 
 const ContractGenerator: React.FC<ContractGeneratorProps> = ({ data }) => {
@@ -62,64 +80,85 @@ const ContractGenerator: React.FC<ContractGeneratorProps> = ({ data }) => {
   const generateContract = async () => {
     setGenerating(true);
     try {
-      const fontBase64 = await loadFont();
-
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.width;
       let yPosition = 20;
 
-      // Register Unicode font
-      doc.addFileToVFS('NotoSans-Regular.ttf', fontBase64);
-      doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
-      doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'bold');
+      // Try to load Unicode font for Greek characters
+      let unicodeFontAvailable = false;
+      const needsUnicode =
+        hasNonLatinChars(data.reservation.customer.name) ||
+        hasNonLatinChars(data.reservation.customer.country) ||
+        hasNonLatinChars(data.reservation.pickup_station) ||
+        hasNonLatinChars(data.reservation.return_station);
 
-      const setFont = (style: 'normal' | 'bold') => {
-        doc.setFont('NotoSans', style);
+      if (needsUnicode) {
+        const fontBase64 = await loadUnicodeFont();
+        if (fontBase64) {
+          registerFont(doc, fontBase64);
+          unicodeFontAvailable = true;
+        }
+      }
+
+      const useUnicodeFont = (text: string) => {
+        if (unicodeFontAvailable && hasNonLatinChars(text)) {
+          doc.setFont('NotoSans', 'normal');
+        } else {
+          doc.setFont('helvetica', 'normal');
+        }
+      };
+
+      const useBoldFont = () => {
+        doc.setFont('helvetica', 'bold');
       };
 
       // Company Header
       doc.setFontSize(20);
-      setFont('bold');
+      useBoldFont();
       doc.text('ANTILIA RENT A CAR', pageWidth / 2, yPosition, { align: 'center' });
 
       yPosition += 10;
       doc.setFontSize(12);
-      setFont('normal');
+      doc.setFont('helvetica', 'normal');
       doc.text('Chania, Crete | Tel: +30 28210 12345 | info@antilia-rentacar.gr', pageWidth / 2, yPosition, { align: 'center' });
 
       yPosition += 20;
       doc.setFontSize(16);
-      setFont('bold');
+      useBoldFont();
       doc.text('CAR RENTAL AGREEMENT', pageWidth / 2, yPosition, { align: 'center' });
 
       yPosition += 15;
       doc.setFontSize(10);
-      setFont('normal');
-      doc.text(`Contract Number: ${data.reservation.id}`, 20, yPosition);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Contract Number: ${data.reservation.id.substring(0, 8).toUpperCase()}`, 20, yPosition);
       doc.text(`Date: ${new Date().toLocaleDateString('en-US')}`, pageWidth - 60, yPosition);
 
       yPosition += 20;
 
       // Customer Information
       doc.setFontSize(12);
-      setFont('bold');
+      useBoldFont();
       doc.text('CUSTOMER INFORMATION', 20, yPosition);
 
       yPosition += 10;
-      setFont('normal');
       doc.setFontSize(10);
 
-      const customerInfo = [
-        `Name: ${data.reservation.customer.name}`,
-        `Phone: ${data.reservation.customer.phone}`,
-        `Email: ${data.reservation.customer.email}`,
-        `Country: ${data.reservation.customer.country}`,
-        `Driving License: ${data.reservation.customer.license_number}`,
-        `Date of Birth: ${new Date(data.reservation.customer.birth_date).toLocaleDateString('en-US')}`
+      const customerFields = [
+        { label: 'Name', value: data.reservation.customer.name },
+        { label: 'Phone', value: data.reservation.customer.phone },
+        { label: 'Email', value: data.reservation.customer.email },
+        { label: 'Country', value: data.reservation.customer.country },
+        { label: 'Driving License', value: data.reservation.customer.license_number },
+        { label: 'Date of Birth', value: data.reservation.customer.birth_date ? new Date(data.reservation.customer.birth_date).toLocaleDateString('en-US') : '' }
       ];
 
-      customerInfo.forEach((info) => {
-        doc.text(info, 20, yPosition);
+      customerFields.forEach(({ label, value }) => {
+        if (!value) return;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${label}: `, 20, yPosition);
+        const labelWidth = doc.getTextWidth(`${label}: `);
+        useUnicodeFont(value);
+        doc.text(value, 20 + labelWidth, yPosition);
         yPosition += 6;
       });
 
@@ -127,53 +166,67 @@ const ContractGenerator: React.FC<ContractGeneratorProps> = ({ data }) => {
 
       // Vehicle Information
       doc.setFontSize(12);
-      setFont('bold');
+      useBoldFont();
       doc.text('VEHICLE INFORMATION', 20, yPosition);
 
       yPosition += 10;
-      setFont('normal');
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
 
-      const vehicleInfo = [
-        `License Plate: ${data.reservation.vehicle.plate}`,
-        `Vehicle: ${data.reservation.vehicle.brand} ${data.reservation.vehicle.model}`,
-        `Vehicle Category: ${data.reservation.vehicle.category}`
-      ];
-
-      vehicleInfo.forEach((info) => {
-        doc.text(info, 20, yPosition);
-        yPosition += 6;
-      });
+      doc.text(`License Plate: ${data.reservation.vehicle.plate}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Vehicle: ${data.reservation.vehicle.brand} ${data.reservation.vehicle.model}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Vehicle Category: ${data.reservation.vehicle.category}`, 20, yPosition);
+      yPosition += 6;
 
       yPosition += 10;
 
       // Rental Details
       doc.setFontSize(12);
-      setFont('bold');
+      useBoldFont();
       doc.text('RENTAL DETAILS', 20, yPosition);
 
       yPosition += 10;
-      setFont('normal');
       doc.setFontSize(10);
 
-      const rentalInfo = [
-        `Pickup Date: ${new Date(data.reservation.pickup_date).toLocaleDateString('en-US')} - ${data.reservation.pickup_station}`,
-        `Return Date: ${new Date(data.reservation.return_date).toLocaleDateString('en-US')} - ${data.reservation.return_station}`,
-        `Daily Rate: EUR ${data.reservation.daily_rate.toFixed(2)}`,
-        `Insurance: ${data.reservation.insurance_type === 'full' ? 'Full Coverage' : 'Basic'} (EUR ${data.reservation.insurance_rate}/day)`
-      ];
+      // Pickup
+      const pickupDateStr = data.reservation.pickup_date ? new Date(data.reservation.pickup_date).toLocaleDateString('en-US') : '';
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Pickup Date: ${pickupDateStr}`, 20, yPosition);
+      yPosition += 6;
 
-      rentalInfo.forEach((info) => {
-        doc.text(info, 20, yPosition);
-        yPosition += 6;
-      });
+      doc.setFont('helvetica', 'normal');
+      doc.text('Pickup Station: ', 20, yPosition);
+      const psLabelWidth = doc.getTextWidth('Pickup Station: ');
+      useUnicodeFont(data.reservation.pickup_station);
+      doc.text(data.reservation.pickup_station || '-', 20 + psLabelWidth, yPosition);
+      yPosition += 6;
+
+      // Return
+      const returnDateStr = data.reservation.return_date ? new Date(data.reservation.return_date).toLocaleDateString('en-US') : '';
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Return Date: ${returnDateStr}`, 20, yPosition);
+      yPosition += 6;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text('Return Station: ', 20, yPosition);
+      const rsLabelWidth = doc.getTextWidth('Return Station: ');
+      useUnicodeFont(data.reservation.return_station);
+      doc.text(data.reservation.return_station || '-', 20 + rsLabelWidth, yPosition);
+      yPosition += 6;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Daily Rate: EUR ${data.reservation.daily_rate.toFixed(2)}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Insurance: ${data.reservation.insurance_type === 'full' ? 'Full Coverage' : 'Basic'} (EUR ${data.reservation.insurance_rate}/day)`, 20, yPosition);
+      yPosition += 6;
 
       // Extras
-      if (data.reservation.extras.length > 0) {
+      if (data.reservation.extras && data.reservation.extras.length > 0) {
         yPosition += 5;
         doc.text('Extras:', 20, yPosition);
         yPosition += 6;
-
         data.reservation.extras.forEach((extra) => {
           doc.text(`- ${extra.name}: ${extra.quantity} x EUR ${extra.price.toFixed(2)}`, 25, yPosition);
           yPosition += 6;
@@ -184,18 +237,18 @@ const ContractGenerator: React.FC<ContractGeneratorProps> = ({ data }) => {
 
       // Total
       doc.setFontSize(12);
-      setFont('bold');
+      useBoldFont();
       doc.text(`TOTAL AMOUNT: EUR ${data.reservation.total_amount.toFixed(2)}`, 20, yPosition);
 
       yPosition += 20;
 
       // Terms and Conditions
       doc.setFontSize(10);
-      setFont('bold');
+      useBoldFont();
       doc.text('TERMS AND CONDITIONS', 20, yPosition);
 
       yPosition += 10;
-      setFont('normal');
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
 
       const terms = [
@@ -215,15 +268,15 @@ const ContractGenerator: React.FC<ContractGeneratorProps> = ({ data }) => {
 
       // Signatures
       doc.setFontSize(10);
-      setFont('normal');
+      doc.setFont('helvetica', 'normal');
       doc.text('Customer Signature:', 20, yPosition);
       doc.text('Company Signature:', pageWidth - 100, yPosition);
 
       doc.line(20, yPosition + 10, 80, yPosition + 10);
       doc.line(pageWidth - 100, yPosition + 10, pageWidth - 20, yPosition + 10);
 
-      // Save the PDF
-      doc.save(`contract-${data.reservation.id}.pdf`);
+      // Save
+      doc.save(`contract-${data.reservation.id.substring(0, 8)}.pdf`);
     } catch (err) {
       console.error('PDF generation failed:', err);
     } finally {

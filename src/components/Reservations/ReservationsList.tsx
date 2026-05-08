@@ -508,9 +508,20 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                 <h2 className="text-lg font-medium text-gray-900">
                   {editing ? 'Επεξεργασία Κράτησης' : 'Λεπτομέρειες Κράτησης'}
                 </h2>
-                <button onClick={() => { setViewReservation(null); cancelEditing(); }} className="text-gray-400 hover:text-gray-600">
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
+                <div className="flex items-center space-x-3">
+                  {!editing && (
+                    <button
+                      onClick={() => startEditing(viewReservation)}
+                      className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                    >
+                      <PencilSquareIcon className="h-4 w-4 mr-1.5" />
+                      Επεξεργασία Κράτησης
+                    </button>
+                  )}
+                  <button onClick={() => { setViewReservation(null); cancelEditing(); }} className="text-gray-400 hover:text-gray-600">
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
 
               <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
