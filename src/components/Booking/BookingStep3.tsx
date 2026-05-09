@@ -107,15 +107,22 @@ const BookingStep3: React.FC<BookingStep3Props> = ({ data, pricing, updateData }
             onChange={(e) => updateCustomer('birthDate', e.target.value)}
             className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <select
-            value={data.customer?.source || 'walk-in'}
-            onChange={(e) => updateCustomer('source', e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="walk-in">{t('walkIn')}</option>
-            <option value="phone">{t('telephone')}</option>
-            <option value="instagram">{t('instagram')}</option>
-          </select>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Πηγή Κράτησης</label>
+            <select
+              value={data.customer?.source || 'walk-in'}
+              onChange={(e) => updateCustomer('source', e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="walk-in">Κατάστημα</option>
+              <option value="phone">Τηλέφωνο</option>
+              <option value="instagram">Instagram</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="website">Ιστοσελίδα</option>
+              <option value="repeat">Επαναλαμβανόμενος Πελάτης</option>
+              <option value="other">Άλλο</option>
+            </select>
+          </div>
         </div>
       </div>
 
