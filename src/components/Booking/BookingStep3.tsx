@@ -110,11 +110,11 @@ const BookingStep3: React.FC<BookingStep3Props> = ({ data, pricing, updateData }
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Πηγή Κράτησης</label>
             <select
-              value={data.customer?.source || 'walk-in'}
+              value={data.customer?.source || 'store'}
               onChange={(e) => updateCustomer('source', e.target.value)}
               className="border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="walk-in">Κατάστημα</option>
+              <option value="store">Κατάστημα</option>
               <option value="phone">Τηλέφωνο</option>
               <option value="instagram">Instagram</option>
               <option value="whatsapp">WhatsApp</option>
