@@ -429,8 +429,16 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
+                  <p className="text-sm font-medium text-gray-500">Όχημα</p>
+                  <p className="text-sm text-gray-900">
+                    {reservation.vehicle
+                      ? `${reservation.vehicle.plate} ${reservation.vehicle.brand} ${reservation.vehicle.model}`
+                      : '-'}
+                  </p>
+                </div>
+                <div>
                   <p className="text-sm font-medium text-gray-500">Κατηγορία</p>
-                  <p className="text-sm text-gray-900">{reservation.category}</p>
+                  <p className="text-sm text-gray-900">{reservation.vehicle?.category || reservation.category}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Σύνολο</p>

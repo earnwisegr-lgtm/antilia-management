@@ -41,6 +41,9 @@ interface BookingData {
   returnStation: string;
   category: string;
   vehicleId?: string;
+  vehiclePlate?: string;
+  vehicleBrand?: string;
+  vehicleModel?: string;
   dailyRate: number;
   insuranceType: 'basic' | 'full';
   insuranceRate: number;

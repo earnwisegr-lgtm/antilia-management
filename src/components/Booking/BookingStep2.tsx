@@ -64,6 +64,9 @@ const BookingStep2: React.FC<BookingStep2Props> = ({ data, updateData }) => {
     const rate = getDailyRate(vehicle.category);
     updateData({
       vehicleId: vehicle.id,
+      vehiclePlate: vehicle.plate,
+      vehicleBrand: vehicle.brand,
+      vehicleModel: vehicle.model,
       category: vehicle.category,
       dailyRate: rate
     });
