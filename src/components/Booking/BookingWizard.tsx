@@ -164,7 +164,7 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
           bookingData.pickupStation && bookingData.returnStation
         );
       case 2:
-        return !!bookingData.category;
+        return !!(bookingData.category && bookingData.vehicleId);
       case 3:
         return !!(bookingData.customer.name && bookingData.customer.phone);
       default:
@@ -202,6 +202,7 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
         // 2) Reservation
         await reservationService.create({
           customer_id: customer.id,
+          vehicle_id: bookingData.vehicleId || undefined,
           category: bookingData.category,
           pickup_date: `${bookingData.pickupDate}T${bookingData.pickupTime}:00`,
           return_date: `${bookingData.returnDate}T${bookingData.returnTime}:00`,
