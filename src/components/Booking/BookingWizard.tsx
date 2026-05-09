@@ -234,9 +234,6 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">{t('newBooking')}</h2>
-            <div className="text-xs text-gray-500">
-              pickup: {bookingData.pickupDate} — return: {bookingData.returnDate} — rate: {bookingData.dailyRate}
-            </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-500">
                 {t('step')} {currentStep} / 3

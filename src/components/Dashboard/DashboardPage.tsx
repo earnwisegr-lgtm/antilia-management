@@ -193,6 +193,9 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      <div className="p-2 bg-green-100 border border-green-300 rounded text-xs font-mono text-green-800">
+        REAL DASHBOARD ACTIVE
+      </div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Κεντρικό Ταμπλό</h1>
         <button
@@ -417,3 +420,6 @@ const DashboardPage: React.FC = () => {
 };
 
 export default DashboardPage;
+
+
+export default DashboardPage

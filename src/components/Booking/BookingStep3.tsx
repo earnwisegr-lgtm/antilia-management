@@ -123,10 +123,6 @@ const BookingStep3: React.FC<BookingStep3Props> = ({ data, pricing, updateData }
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">{t('pricingSection')}</h3>
 
-        <div className="bg-yellow-100 border border-yellow-400 rounded p-2 mb-3 text-xs font-mono text-yellow-900">
-          DEBUG — pickupDate: <b>{data.pickupDate}</b> | returnDate: <b>{data.returnDate}</b> | dailyRate: <b>{data.dailyRate}</b> | pricing.days: <b>{pricing.days}</b> | pricing.rate: <b>{pricing.rate}</b> | pricing.grandTotal: <b>{pricing.grandTotal}</b>
-        </div>
-
         <div className="bg-gray-50 rounded-lg p-4 space-y-4">
           <div className="flex justify-between">
             <span>{t('dailyRate')} ({pricing.days} {t('days')})</span>
