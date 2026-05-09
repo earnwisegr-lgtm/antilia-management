@@ -5,6 +5,7 @@ import ReservationsList from './components/Reservations/ReservationsList';
 import BookingWizard from './components/Booking/BookingWizard';
 import CustomerManagement from './components/Customers/CustomerManagement';
 import FleetManagement from './components/Fleet/FleetManagement';
+import DashboardPage from './components/Dashboard/DashboardPage';
 import {
   HomeIcon,
   CalendarDaysIcon,
@@ -18,7 +19,6 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
-  CheckCircleIcon,
   CameraIcon,
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
@@ -31,13 +31,6 @@ function AppContent() {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [reservationRefresh, setReservationRefresh] = useState(0);
 
-  // Mock data
-  const todayStats = {
-    reservations: 12,
-    revenue: 1850,
-    pickups: 8,
-    returns: 6
-  };
 
 
 
@@ -73,13 +66,6 @@ function AppContent() {
     { id: 'settings', label: 'Ρυθμίσεις', icon: CogIcon },
   ];
 
-  const availableVehicles = {
-    'A': { vehicles: ['Toyota Aygo', 'Peugeot 108'], dailyRate: 25, count: 3 },
-    'B': { vehicles: ['Nissan Micra', 'Ford Fiesta'], dailyRate: 35, count: 5 },
-    'C': { vehicles: ['VW Golf', 'Toyota Corolla'], dailyRate: 45, count: 2 },
-    'SUV': { vehicles: ['Nissan Qashqai', 'Peugeot 3008'], dailyRate: 65, count: 4 },
-    '7-seater': { vehicles: ['Ford Galaxy'], dailyRate: 85, count: 1 }
-  };
 
 
   const getRoleColor = (role: string) => {
@@ -481,134 +467,7 @@ function AppContent() {
         {/* Main Content */}
         <main className="flex-1 p-8">
           {activeTab === 'dashboard' && (
-            <div className="space-y-8">
-              <h1 className="text-2xl font-semibold text-gray-900">Κεντρικό Ταμπλό</h1>
-              
-              {/* Today Stats */}
-              <div>
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Σήμερα</h2>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div className="p-5">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <CalendarDaysIcon className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div className="ml-5 w-0 flex-1">
-                          <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate">Κρατήσεις</dt>
-                            <dd className="text-lg font-medium text-gray-900">{todayStats.reservations}</dd>
-                          </dl>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div className="p-5">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <CurrencyEuroIcon className="h-6 w-6 text-green-600" />
-                        </div>
-                        <div className="ml-5 w-0 flex-1">
-                          <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate">Έσοδα</dt>
-                            <dd className="text-lg font-medium text-gray-900">€{todayStats.revenue}</dd>
-                          </dl>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div className="p-5">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <TruckIcon className="h-6 w-6 text-purple-600" />
-                        </div>
-                        <div className="ml-5 w-0 flex-1">
-                          <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate">Παραλαβές</dt>
-                            <dd className="text-lg font-medium text-gray-900">{todayStats.pickups}</dd>
-                          </dl>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div className="p-5">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <CheckCircleIcon className="h-6 w-6 text-orange-600" />
-                        </div>
-                        <div className="ml-5 w-0 flex-1">
-                          <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate">Παραδόσεις</dt>
-                            <dd className="text-lg font-medium text-gray-900">{todayStats.returns}</dd>
-                          </dl>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fleet Occupancy */}
-              <div className="bg-white shadow-sm rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Πληρότητα Στόλου - Επόμενες 7 Ημέρες</h3>
-                </div>
-                <div className="p-6">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-2 text-sm font-medium text-gray-500">Ημερομηνία</th>
-                          <th className="text-center py-2 text-sm font-medium text-gray-500">A</th>
-                          <th className="text-center py-2 text-sm font-medium text-gray-500">B</th>
-                          <th className="text-center py-2 text-sm font-medium text-gray-500">C</th>
-                          <th className="text-center py-2 text-sm font-medium text-gray-500">SUV</th>
-                          <th className="text-center py-2 text-sm font-medium text-gray-500">7-seater</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {[
-                          { date: '15/01', data: [6, 9, 4, 8, 2], totals: [8, 12, 6, 10, 4] },
-                          { date: '16/01', data: [7, 10, 5, 7, 3], totals: [8, 12, 6, 10, 4] },
-                          { date: '17/01', data: [5, 8, 3, 9, 1], totals: [8, 12, 6, 10, 4] },
-                          { date: '18/01', data: [8, 11, 6, 10, 4], totals: [8, 12, 6, 10, 4] },
-                          { date: '19/01', data: [4, 7, 2, 6, 2], totals: [8, 12, 6, 10, 4] },
-                          { date: '20/01', data: [6, 9, 4, 8, 3], totals: [8, 12, 6, 10, 4] },
-                          { date: '21/01', data: [7, 10, 5, 9, 2], totals: [8, 12, 6, 10, 4] }
-                        ].map((day, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="py-3 text-sm font-medium text-gray-900">{day.date}</td>
-                            {day.data.map((occupied, catIndex) => {
-                              const total = day.totals[catIndex];
-                              const percentage = (occupied / total) * 100;
-                              return (
-                                <td key={catIndex} className="text-center py-3">
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <span className="text-sm text-gray-900">{occupied}/{total}</span>
-                                    <div className="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full transition-all duration-300 ${
-                                          percentage < 50 ? 'bg-green-500' : 
-                                          percentage < 80 ? 'bg-yellow-500' : 'bg-red-500'
-                                        }`}
-                                        style={{ width: `${percentage}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <DashboardPage />
           )}
 
           {activeTab === 'bookings' && (
