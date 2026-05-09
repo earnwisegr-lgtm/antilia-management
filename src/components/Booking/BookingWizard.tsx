@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { reservationService, customerService } from '../../lib/database';
+import type { Customer } from '../../types';
 import BookingStep1 from './BookingStep1';
 import BookingStep2 from './BookingStep2';
 import BookingStep3 from './BookingStep3';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-
-console.log('%cWIZARD LOADED', 'background:#08f;color:#000');
 
 // --- helpers (πάνω από το component) ---
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -94,7 +93,7 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
         country: '',
         licenseNumber: '',
         birthDate: '',
-        source: 'walk-in'
+        source: 'store'
       },
       notes: ''
     };
@@ -199,7 +198,7 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
           country: bookingData.customer.country,
           license_number: bookingData.customer.licenseNumber,
           birth_date: bookingData.customer.birthDate,
-          source: bookingData.customer.source as 'walk-in' | 'phone' | 'instagram'
+          source: bookingData.customer.source as Customer['source']
         });
 
         // 2) Reservation

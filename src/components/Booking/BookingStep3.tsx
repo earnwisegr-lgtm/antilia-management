@@ -1,8 +1,6 @@
 import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-console.log('%cSTEP3 LOADED', 'background:#0b0;color:#000');
-
 interface Pricing {
   days: number;
   rate: number;
@@ -20,8 +18,6 @@ interface BookingStep3Props {
 
 const BookingStep3: React.FC<BookingStep3Props> = ({ data, pricing, updateData }) => {
   const { t } = useLanguage();
-
-  console.log('S3 data:', data.pickupDate, data.returnDate, data.dailyRate);
 
   const extrasDef = {
     childSeat: { nameEl: 'Παιδικό Κάθισμα', nameEn: 'Child Seat', price: 5, type: 'daily' as const },

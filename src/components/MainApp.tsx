@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { reservationService, vehicleService } from '../lib/database';
 import LoginForm from './Login/LoginForm';
 import Header from './Layout/Header';
 import Sidebar from './Layout/Sidebar';
-import DashboardStats from './Dashboard/DashboardStats';
-import FleetOccupancy from './Dashboard/FleetOccupancy';
+import DashboardPage from './Dashboard/DashboardPage';
 import BookingWizard from './Booking/BookingWizard';
 import ReservationsList from './Reservations/ReservationsList';
 import CustomerManagement from './Customers/CustomerManagement';
@@ -25,6 +25,8 @@ const MainApp: React.FC = () => {
   const [checkOutReservation, setCheckOutReservation] = useState<string | null>(null);
   const [checkInReservation, setCheckInReservation] = useState<string | null>(null);
   const [reservationRefresh, setReservationRefresh] = useState(0);
+  const [checkOutError, setCheckOutError] = useState('');
+  const [checkInError, setCheckInError] = useState('');
 
   if (loading) {
     return (
@@ -41,24 +43,66 @@ const MainApp: React.FC = () => {
     return <LoginForm />;
   }
 
-  const handleCheckOut = (reservationId: string) => {
-    setCheckOutReservation(reservationId);
+  const handleCheckOut = async (reservationId: string) => {
+    setCheckOutError('');
+    try {
+      const allReservations = await reservationService.getAll();
+      const reservation = allReservations.find((r: any) => r.id === reservationId);
+      if (!reservation) return;
+      if (!(reservation as any).vehicle_id) {
+        alert('Δεν έχει επιλεγεί όχημα για αυτή την κράτηση');
+        return;
+      }
+      setCheckOutReservation(reservationId);
+    } catch {
+      setCheckOutError('Αποτυχία φόρτωσης κράτησης.');
+    }
   };
 
   const handleCheckIn = (reservationId: string) => {
     setCheckInReservation(reservationId);
   };
 
-  const handleCheckOutComplete = (data: any) => {
-    console.log('Check-out completed:', data);
-    setCheckOutReservation(null);
-    setReservationRefresh(prev => prev + 1);
+  const handleCheckOutComplete = async (_data: any) => {
+    if (!checkOutReservation) return;
+    try {
+      const allReservations = await reservationService.getAll();
+      const reservation = allReservations.find((r: any) => r.id === checkOutReservation);
+      if (!reservation) throw new Error('Reservation not found');
+
+      await reservationService.update(checkOutReservation, { status: 'active' });
+
+      if ((reservation as any).vehicle_id) {
+        await vehicleService.update((reservation as any).vehicle_id, { status: 'rented' });
+      }
+
+      setCheckOutReservation(null);
+      setReservationRefresh(prev => prev + 1);
+    } catch (err) {
+      console.error('Check-out save failed:', err);
+      setCheckOutError('Αποτυχία ολοκλήρωσης check-out.');
+    }
   };
 
-  const handleCheckInComplete = (data: any) => {
-    console.log('Check-in completed:', data);
-    setCheckInReservation(null);
-    setReservationRefresh(prev => prev + 1);
+  const handleCheckInComplete = async (_data: any) => {
+    if (!checkInReservation) return;
+    try {
+      const allReservations = await reservationService.getAll();
+      const reservation = allReservations.find((r: any) => r.id === checkInReservation);
+      if (!reservation) throw new Error('Reservation not found');
+
+      await reservationService.update(checkInReservation, { status: 'completed' });
+
+      if ((reservation as any).vehicle_id) {
+        await vehicleService.update((reservation as any).vehicle_id, { status: 'available' });
+      }
+
+      setCheckInReservation(null);
+      setReservationRefresh(prev => prev + 1);
+    } catch (err) {
+      console.error('Check-in save failed:', err);
+      setCheckInError('Αποτυχία ολοκλήρωσης check-in.');
+    }
   };
 
   // Show check-out form
@@ -67,6 +111,11 @@ const MainApp: React.FC = () => {
       <div className="min-h-screen bg-gray-100">
         <Header />
         <div className="py-8">
+          {checkOutError && (
+            <div className="max-w-4xl mx-auto mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+              {checkOutError}
+            </div>
+          )}
           <CheckOutForm
             reservationId={checkOutReservation}
             onComplete={handleCheckOutComplete}
@@ -83,6 +132,11 @@ const MainApp: React.FC = () => {
       <div className="min-h-screen bg-gray-100">
         <Header />
         <div className="py-8">
+          {checkInError && (
+            <div className="max-w-4xl mx-auto mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+              {checkInError}
+            </div>
+          )}
           <CheckInForm
             reservationId={checkInReservation}
             onComplete={handleCheckInComplete}
@@ -122,12 +176,7 @@ const MainApp: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return (
-          <div className="space-y-8">
-            <DashboardStats />
-            <FleetOccupancy />
-          </div>
-        );
+        return <DashboardPage />;
       case 'bookings':
         return (
           <div className="space-y-6">
@@ -156,12 +205,7 @@ const MainApp: React.FC = () => {
       case 'settings':
         return <SettingsPage />;
       default:
-        return (
-          <div className="space-y-8">
-            <DashboardStats />
-            <FleetOccupancy />
-          </div>
-        );
+        return <DashboardPage />;
     }
   };
 

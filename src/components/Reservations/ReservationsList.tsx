@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { reservationService, customerService, stationService } from '../../lib/database';
+import { reservationService, customerService, stationService, vehicleService } from '../../lib/database';
 import { format } from 'date-fns';
 import { el } from 'date-fns/locale';
 import {
@@ -144,6 +144,14 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
     setActionError('');
     try {
       await reservationService.update(id, { status: newStatus as ReservationRow['status'] });
+
+      if (newStatus === 'cancelled') {
+        const reservation = reservations.find(r => r.id === id);
+        if (reservation?.vehicle_id) {
+          await vehicleService.update(reservation.vehicle_id, { status: 'available' });
+        }
+      }
+
       setReservations(prev =>
         prev.map(r => (r.id === id ? { ...r, status: newStatus as ReservationRow['status'] } : r))
       );
