@@ -465,11 +465,14 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                 </div>
                 <div className="flex items-center space-x-2">
                   <span
-                    className="text-xs cursor-pointer"
-                    title={reservation.excel_updated ? 'Excel ενημερώθηκε' : 'Εκκρεμεί ενημέρωση Excel'}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer ${
+                      reservation.excel_updated
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : 'bg-orange-50 text-orange-700 border border-orange-200'
+                    }`}
                     onClick={(e) => { e.stopPropagation(); handleExcelToggle(reservation.id, !!reservation.excel_updated); }}
                   >
-                    {reservation.excel_updated ? '\u{1F7E2}' : '\u{1F7E0}'}
+                    {reservation.excel_updated ? 'Excel \u2713' : 'Excel \u231B'}
                   </span>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}>
                     {getStatusLabel(reservation.status)}
@@ -618,14 +621,27 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                       </div>
                     </div>
 
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-2">Όχημα</h3>
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                        <p className="text-sm text-gray-900 font-medium">
-                          {viewReservation.vehicle
-                            ? `${viewReservation.vehicle.brand} ${viewReservation.vehicle.model} (${viewReservation.vehicle.plate})`
-                            : `Κατηγορία ${viewReservation.category}`}
-                        </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Όχημα</h3>
+                        <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                          <p className="text-sm text-gray-900 font-medium">
+                            {viewReservation.vehicle
+                              ? `${viewReservation.vehicle.brand} ${viewReservation.vehicle.model} (${viewReservation.vehicle.plate})`
+                              : `Κατηγορία ${viewReservation.category}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="ml-4 flex-shrink-0">
+                        <label className="flex items-center cursor-pointer select-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-3">
+                          <input
+                            type="checkbox"
+                            checked={!!viewReservation.excel_updated}
+                            onChange={() => handleExcelToggle(viewReservation.id, !!viewReservation.excel_updated)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                          />
+                          <span className="text-sm text-gray-700 whitespace-nowrap">Excel {viewReservation.excel_updated ? '\u2713' : '\u231B'}</span>
+                        </label>
                       </div>
                     </div>
 
@@ -673,20 +689,6 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
-                      <label className="flex items-center cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={!!viewReservation.excel_updated}
-                          onChange={() => handleExcelToggle(viewReservation.id, !!viewReservation.excel_updated)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                        />
-                        <span className="text-sm text-gray-700">Excel ενημερώθηκε</span>
-                      </label>
-                      <span className="text-xs text-gray-500">
-                        {viewReservation.excel_updated ? '\u{1F7E2} Ενημερωμένο' : '\u{1F7E0} Εκκρεμεί'}
-                      </span>
-                    </div>
                   </>
                 ) : (
                   <>
