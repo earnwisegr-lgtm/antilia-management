@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { 
+import { company } from '../../lib/company';
+import {
   CogIcon,
   BuildingOfficeIcon,
   MapPinIcon,
@@ -22,13 +23,13 @@ const SettingsPage: React.FC = () => {
   ];
 
   const [companySettings, setCompanySettings] = useState({
-    name: 'Antilia Rent a Car',
-    address: 'Πλατανιάς, Χανιά, Κρήτη',
-    phone: '+30 28210 12345',
-    email: 'info@antilia-rentacar.gr',
-    website: 'www.antilia-rentacar.gr',
-    tax_number: '123456789',
-    registration_number: 'ΑΕ 12345'
+    name: company.name,
+    address: company.address,
+    phone: company.phone,
+    email: company.email,
+    website: company.website,
+    tax_number: company.taxNumber,
+    registration_number: company.registrationNumber
   });
 
   const [stations, setStations] = useState([

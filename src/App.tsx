@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { company } from './lib/company';
 import ReservationsList from './components/Reservations/ReservationsList';
 import BookingWizard from './components/Booking/BookingWizard';
 import CustomerManagement from './components/Customers/CustomerManagement';
@@ -37,7 +38,7 @@ function AppContent() {
   const users = [
     {
       id: '1',
-      email: 'admin@antilia.com',
+      email: `admin@${company.email.split('@')[1]}`,
       name: 'Διαχειριστής Συστήματος',
       role: 'admin',
       active: true,
@@ -46,7 +47,7 @@ function AppContent() {
     },
     {
       id: '2',
-      email: 'manager@antilia.com',
+      email: `manager@${company.email.split('@')[1]}`,
       name: 'Μάνατζερ Καταστήματος',
       role: 'manager',
       active: true,
@@ -84,7 +85,7 @@ function AppContent() {
         <div className="max-w-md w-full space-y-8">
           <div>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Antilia Rent a Car
+              {company.name}
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
               Σύστημα Διαχείρισης Κρατήσεων
@@ -96,7 +97,7 @@ function AppContent() {
               <div>
                 <input
                   type="email"
-                  defaultValue="demo@antilia.com"
+                  defaultValue={company.demoEmail}
                   className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                   placeholder="Email address"
                 />
@@ -122,7 +123,7 @@ function AppContent() {
             
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                Demo: demo@antilia.com / demo123
+                Demo: {company.demoEmail} / {company.demoPassword}
               </p>
             </div>
           </div>
@@ -140,7 +141,7 @@ function AppContent() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
-                <h1 className="text-xl font-bold text-blue-600">Antilia Rent a Car</h1>
+                <h1 className="text-xl font-bold text-blue-600">{company.name}</h1>
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-gray-700">Demo User</span>
@@ -185,7 +186,7 @@ function AppContent() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
-                <h1 className="text-xl font-bold text-blue-600">Antilia Rent a Car</h1>
+                <h1 className="text-xl font-bold text-blue-600">{company.name}</h1>
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-gray-700">Demo User</span>
@@ -313,7 +314,7 @@ function AppContent() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
-                <h1 className="text-xl font-bold text-blue-600">Antilia Rent a Car</h1>
+                <h1 className="text-xl font-bold text-blue-600">{company.name}</h1>
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-gray-700">Demo User</span>
@@ -416,7 +417,7 @@ function AppContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-blue-600">Antilia Rent a Car</h1>
+              <h1 className="text-xl font-bold text-blue-600">{company.name}</h1>
             </div>
             <div className="flex items-center space-x-4">
               <select className="appearance-none bg-white border border-gray-300 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -871,7 +872,7 @@ function AppContent() {
                         </label>
                         <input
                           type="text"
-                          defaultValue="Antilia Rent a Car"
+                          defaultValue={company.name}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -901,7 +902,7 @@ function AppContent() {
                         </label>
                         <input
                           type="text"
-                          defaultValue="+30 28210 12345"
+                          defaultValue={company.phone}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -911,7 +912,7 @@ function AppContent() {
                         </label>
                         <input
                           type="email"
-                          defaultValue="info@antilia-rentacar.gr"
+                          defaultValue={company.email}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>

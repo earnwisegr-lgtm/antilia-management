@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import jsPDF from 'jspdf';
 import { DocumentTextIcon } from '@heroicons/react/24/outline';
+import { company } from '../../lib/company';
 
 interface ContractData {
   reservation: {
@@ -115,12 +116,12 @@ const ContractGenerator: React.FC<ContractGeneratorProps> = ({ data }) => {
       // Company Header
       doc.setFontSize(20);
       useBoldFont();
-      doc.text('ANTILIA RENT A CAR', pageWidth / 2, yPosition, { align: 'center' });
+      doc.text(company.contractHeader, pageWidth / 2, yPosition, { align: 'center' });
 
       yPosition += 10;
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text('Chania, Crete | Tel: +30 28210 12345 | info@antilia-rentacar.gr', pageWidth / 2, yPosition, { align: 'center' });
+      doc.text(`${company.contractSubheader} | Tel: ${company.phone} | ${company.email}`, pageWidth / 2, yPosition, { align: 'center' });
 
       yPosition += 20;
       doc.setFontSize(16);

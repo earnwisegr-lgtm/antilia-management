@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { company } from '../../lib/company';
 
 const LoginForm: React.FC = () => {
-  const [email, setEmail] = useState('demo@antilia.com');
+  const [email, setEmail] = useState(company.demoEmail);
   const [password, setPassword] = useState('demo123');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -26,7 +27,7 @@ const LoginForm: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Antilia Rent a Car
+            {company.name}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Σύστημα Διαχείρισης Κρατήσεων
@@ -77,7 +78,7 @@ const LoginForm: React.FC = () => {
           
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              Demo: demo@antilia.com / demo123
+              Demo: {company.demoEmail} / {company.demoPassword}
             </p>
           </div>
         </form>

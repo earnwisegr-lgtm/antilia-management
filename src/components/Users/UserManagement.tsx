@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { 
+import { company } from '../../lib/company';
+import {
   UserGroupIcon,
   PlusIcon,
   PencilIcon,
@@ -27,7 +28,7 @@ const UserManagement: React.FC = () => {
   const users: User[] = [
     {
       id: '1',
-      email: 'admin@antilia.com',
+      email: `admin@${company.email.split('@')[1]}`,
       name: 'Διαχειριστής Συστήματος',
       role: 'admin',
       active: true,
@@ -36,7 +37,7 @@ const UserManagement: React.FC = () => {
     },
     {
       id: '2',
-      email: 'manager@antilia.com',
+      email: `manager@${company.email.split('@')[1]}`,
       name: 'Μάνατζερ Καταστήματος',
       role: 'manager',
       active: true,
@@ -45,7 +46,7 @@ const UserManagement: React.FC = () => {
     },
     {
       id: '3',
-      email: 'agent1@antilia.com',
+      email: `agent1@${company.email.split('@')[1]}`,
       name: 'Πράκτορας 1',
       role: 'agent',
       active: true,
@@ -54,7 +55,7 @@ const UserManagement: React.FC = () => {
     },
     {
       id: '4',
-      email: 'agent2@antilia.com',
+      email: `agent2@${company.email.split('@')[1]}`,
       name: 'Πράκτορας 2',
       role: 'agent',
       active: false,

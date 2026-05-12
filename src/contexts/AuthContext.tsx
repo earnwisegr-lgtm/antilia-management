@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '../types';
+import { company } from '../lib/company';
 
 interface AuthContextType {
   user: User | null;
@@ -36,7 +37,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // Demo mode - set demo user
           const demoUser: User = {
             id: '1',
-            email: 'demo@antilia.com',
+            email: company.demoEmail,
             role: 'manager',
             name: 'Demo User',
             created_at: new Date().toISOString()
@@ -48,7 +49,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Fallback to demo user for development
         const demoUser: User = {
           id: '1',
-          email: 'demo@antilia.com',
+          email: company.demoEmail,
           role: 'manager',
           name: 'Demo User',
           created_at: new Date().toISOString()
@@ -90,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } else {
         // Demo mode login
-        if (email === 'demo@antilia.com' && password === 'demo123') {
+        if (email === company.demoEmail && password === company.demoPassword) {
           const demoUser: User = {
             id: '1',
             email,
@@ -106,7 +107,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Login failed:', error);
       // For demo purposes, allow demo login
-      if (email === 'demo@antilia.com' && password === 'demo123') {
+      if (email === company.demoEmail && password === company.demoPassword) {
         const demoUser: User = {
           id: '1',
           email,
