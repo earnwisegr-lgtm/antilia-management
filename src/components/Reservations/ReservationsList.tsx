@@ -32,6 +32,7 @@ interface ReservationRow {
   insurance_rate: number;
   total_amount: number;
   notes?: string;
+  excel_updated?: boolean;
   created_at: string;
   customer: {
     id: string;
@@ -103,6 +104,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<string>('all');
+  const [excelFilter, setExcelFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewReservation, setViewReservation] = useState<ReservationRow | null>(null);
@@ -251,6 +253,21 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
     }
   };
 
+  const handleExcelToggle = async (id: string, currentValue: boolean) => {
+    const newValue = !currentValue;
+    try {
+      await reservationService.update(id, { excel_updated: newValue });
+      setReservations(prev =>
+        prev.map(r => (r.id === id ? { ...r, excel_updated: newValue } : r))
+      );
+      if (viewReservation?.id === id) {
+        setViewReservation(prev => prev ? { ...prev, excel_updated: newValue } : null);
+      }
+    } catch {
+      setActionError('Αποτυχία ενημέρωσης.');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming': return 'bg-blue-100 text-blue-800';
@@ -268,6 +285,8 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
 
   const filteredReservations = reservations.filter(reservation => {
     if (filter !== 'all' && reservation.status !== filter) return false;
+    if (excelFilter === 'pending' && reservation.excel_updated !== false) return false;
+    if (excelFilter === 'done' && reservation.excel_updated !== true) return false;
     if (dateFilter && !reservation.pickup_date.startsWith(dateFilter)) return false;
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -353,7 +372,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
 
       {/* Filters */}
       <div className="bg-white shadow-sm rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Αναζήτηση
@@ -386,7 +405,21 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ημερομηνία Παραλαβής
+              Excel
+            </label>
+            <select
+              value={excelFilter}
+              onChange={(e) => setExcelFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="all">Όλες</option>
+              <option value="pending">Εκκρεμεί ενημέρωση</option>
+              <option value="done">Ενημερώθηκε</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Ημ. Παραλαβής
             </label>
             <input
               type="date"
@@ -397,7 +430,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
           </div>
           <div className="flex items-end">
             <button
-              onClick={() => { setFilter('all'); setDateFilter(''); setSearchTerm(''); }}
+              onClick={() => { setFilter('all'); setExcelFilter('all'); setDateFilter(''); setSearchTerm(''); }}
               className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md bg-white hover:bg-gray-50"
             >
               Καθαρισμός
@@ -430,9 +463,18 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                   </h3>
                   <p className="text-sm text-gray-600">{reservation.customer?.phone || '-'}</p>
                 </div>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}>
-                  {getStatusLabel(reservation.status)}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <span
+                    className="text-xs cursor-pointer"
+                    title={reservation.excel_updated ? 'Excel ενημερώθηκε' : 'Εκκρεμεί ενημέρωση Excel'}
+                    onClick={(e) => { e.stopPropagation(); handleExcelToggle(reservation.id, !!reservation.excel_updated); }}
+                  >
+                    {reservation.excel_updated ? '\u{1F7E2}' : '\u{1F7E0}'}
+                  </span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}>
+                    {getStatusLabel(reservation.status)}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
@@ -630,6 +672,21 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                         </div>
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+                      <label className="flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={!!viewReservation.excel_updated}
+                          onChange={() => handleExcelToggle(viewReservation.id, !!viewReservation.excel_updated)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                        />
+                        <span className="text-sm text-gray-700">Excel ενημερώθηκε</span>
+                      </label>
+                      <span className="text-xs text-gray-500">
+                        {viewReservation.excel_updated ? '\u{1F7E2} Ενημερωμένο' : '\u{1F7E0} Εκκρεμεί'}
+                      </span>
+                    </div>
                   </>
                 ) : (
                   <>
