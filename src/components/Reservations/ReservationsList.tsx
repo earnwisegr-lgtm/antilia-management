@@ -472,7 +472,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                     }`}
                     onClick={(e) => { e.stopPropagation(); handleExcelToggle(reservation.id, !!reservation.excel_updated); }}
                   >
-                    {reservation.excel_updated ? 'Excel \u2713' : 'Excel \u231B'}
+                    {reservation.excel_updated ? '\u{1F7E2} Excel ενημερώθηκε' : '\u{1F7E0} Excel εκκρεμεί'}
                   </span>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}>
                     {getStatusLabel(reservation.status)}
@@ -640,7 +640,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                             onChange={() => handleExcelToggle(viewReservation.id, !!viewReservation.excel_updated)}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
                           />
-                          <span className="text-sm text-gray-700 whitespace-nowrap">Excel {viewReservation.excel_updated ? '\u2713' : '\u231B'}</span>
+                          <span className="text-sm text-gray-700 whitespace-nowrap">Excel ενημερώθηκε</span>
                         </label>
                       </div>
                     </div>
