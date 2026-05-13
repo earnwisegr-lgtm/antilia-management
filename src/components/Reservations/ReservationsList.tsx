@@ -112,6 +112,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   const [actionSuccess, setActionSuccess] = useState('');
   const [changingStatus, setChangingStatus] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
+  const [checkingIn, setCheckingIn] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   // Edit mode
@@ -283,6 +284,27 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
       setActionError('Αποτυχία check-out. Δοκιμάστε ξανά.');
     } finally {
       setCheckingOut(null);
+    }
+  };
+
+  const handleDirectCheckIn = async (reservation: ReservationRow) => {
+    setActionError('');
+    setActionSuccess('');
+    setCheckingIn(reservation.id);
+    try {
+      await reservationService.update(reservation.id, { status: 'completed' });
+      if (reservation.vehicle_id) {
+        await vehicleService.update(reservation.vehicle_id, { status: 'available' });
+      }
+      setReservations(prev =>
+        prev.map(r => (r.id === reservation.id ? { ...r, status: 'completed' as const } : r))
+      );
+      setActionSuccess('Check-in ολοκληρώθηκε επιτυχώς');
+      setTimeout(() => setActionSuccess(''), 3000);
+    } catch {
+      setActionError('Αποτυχία check-in. Δοκιμάστε ξανά.');
+    } finally {
+      setCheckingIn(null);
     }
   };
 
@@ -595,11 +617,12 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                   })()}
                   {reservation.status === 'active' && (
                     <button
-                      onClick={() => onCheckIn?.(reservation.id)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-green-600 hover:bg-green-700 transition-colors"
+                      onClick={() => handleDirectCheckIn(reservation)}
+                      disabled={checkingIn === reservation.id}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors"
                     >
                       <CheckIcon className="h-4 w-4 mr-1" />
-                      Check-in
+                      {checkingIn === reservation.id ? 'Αναμονή...' : 'Check-in'}
                     </button>
                   )}
                 </div>
