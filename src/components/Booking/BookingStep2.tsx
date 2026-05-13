@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { vehicleService, pricingService } from '../../lib/database';
-import type { Vehicle, Pricing } from '../../types';
+import { vehicleService, pricingService, reservationService } from '../../lib/database';
+import type { Vehicle, Pricing, Reservation } from '../../types';
 import { TruckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 interface BookingStep2Props {
@@ -13,6 +13,7 @@ const BookingStep2: React.FC<BookingStep2Props> = ({ data, updateData }) => {
   const { t } = useLanguage();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [pricing, setPricing] = useState<Pricing[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -21,12 +22,14 @@ const BookingStep2: React.FC<BookingStep2Props> = ({ data, updateData }) => {
       setLoading(true);
       setError('');
       try {
-        const [vehicleData, pricingData] = await Promise.all([
+        const [vehicleData, pricingData, reservationData] = await Promise.all([
           vehicleService.getAll(),
-          pricingService.getPricing()
+          pricingService.getPricing(),
+          reservationService.getAll()
         ]);
         setVehicles(vehicleData);
         setPricing(pricingData);
+        setReservations(reservationData);
       } catch (err) {
         console.error('Failed to load vehicles:', err);
         setError('Αποτυχία φόρτωσης οχημάτων.');
@@ -36,6 +39,19 @@ const BookingStep2: React.FC<BookingStep2Props> = ({ data, updateData }) => {
     };
     fetchData();
   }, []);
+
+  const isVehicleOverlapping = (vehicleId: string): boolean => {
+    if (!data.pickupDate || !data.returnDate) return false;
+    const newStart = new Date(data.pickupDate).getTime();
+    const newEnd = new Date(data.returnDate).getTime();
+    return reservations.some(r => {
+      if (r.vehicle_id !== vehicleId) return false;
+      if (r.status !== 'upcoming' && r.status !== 'active') return false;
+      const rStart = new Date(r.pickup_date).getTime();
+      const rEnd = new Date(r.return_date).getTime();
+      return newStart < rEnd && newEnd > rStart;
+    });
+  };
 
   const getDailyRate = (category: string): number => {
     const found = pricing.find(p => p.category === category);
@@ -107,7 +123,8 @@ const BookingStep2: React.FC<BookingStep2Props> = ({ data, updateData }) => {
         {vehicles.map((vehicle) => {
           const rate = getDailyRate(vehicle.category);
           const isSelected = data.vehicleId === vehicle.id;
-          const isAvailable = vehicle.status === 'available';
+          const hasOverlap = isVehicleOverlapping(vehicle.id);
+          const isAvailable = vehicle.status === 'available' && !hasOverlap;
 
           return (
             <div
@@ -129,9 +146,15 @@ const BookingStep2: React.FC<BookingStep2Props> = ({ data, updateData }) => {
                     <p className="text-sm text-gray-600">{vehicle.brand} {vehicle.model}</p>
                   </div>
                 </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(vehicle.status)}`}>
-                  {getStatusLabel(vehicle.status)}
-                </span>
+                {hasOverlap ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                    Μη διαθέσιμο
+                  </span>
+                ) : (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(vehicle.status)}`}>
+                    {getStatusLabel(vehicle.status)}
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-sm mb-3">

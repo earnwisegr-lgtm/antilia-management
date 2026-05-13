@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { reservationService, customerService } from '../../lib/database';
-import type { Customer } from '../../types';
+import type { Customer, Reservation } from '../../types';
 import BookingStep1 from './BookingStep1';
 import BookingStep2 from './BookingStep2';
 import BookingStep3 from './BookingStep3';
@@ -190,6 +190,25 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
       setSaving(true);
       setSaveError('');
       try {
+        // Final overlap check before saving
+        if (bookingData.vehicleId) {
+          const allReservations: Reservation[] = await reservationService.getAll();
+          const newStart = new Date(bookingData.pickupDate).getTime();
+          const newEnd = new Date(bookingData.returnDate).getTime();
+          const hasConflict = allReservations.some(r => {
+            if (r.vehicle_id !== bookingData.vehicleId) return false;
+            if (r.status !== 'upcoming' && r.status !== 'active') return false;
+            const rStart = new Date(r.pickup_date).getTime();
+            const rEnd = new Date(r.return_date).getTime();
+            return newStart < rEnd && newEnd > rStart;
+          });
+          if (hasConflict) {
+            setSaveError('Το όχημα δεν είναι διαθέσιμο για τις επιλεγμένες ημερομηνίες');
+            setSaving(false);
+            return;
+          }
+        }
+
         // 1) Customer
         const customer = await customerService.create({
           name: bookingData.customer.name,
