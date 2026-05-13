@@ -258,6 +258,14 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   const handleDirectCheckOut = async (reservation: ReservationRow) => {
     setActionError('');
     setActionSuccess('');
+    const pickupDate = new Date(reservation.pickup_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    pickupDate.setHours(0, 0, 0, 0);
+    if (pickupDate > today) {
+      setActionError('Check-out διαθέσιμο από την ημερομηνία παραλαβής');
+      return;
+    }
     if (!reservation.vehicle_id) {
       setActionError('Δεν έχει επιλεγεί όχημα για αυτή την κράτηση');
       return;
@@ -563,17 +571,28 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                   )}
                 </div>
 
-                <div className="flex space-x-2">
-                  {reservation.status === 'upcoming' && (
-                    <button
-                      onClick={() => handleDirectCheckOut(reservation)}
-                      disabled={checkingOut === reservation.id}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                    >
-                      <TruckIcon className="h-4 w-4 mr-1" />
-                      {checkingOut === reservation.id ? 'Αναμονή...' : 'Check-out'}
-                    </button>
-                  )}
+                <div className="flex space-x-2 items-center">
+                  {reservation.status === 'upcoming' && (() => {
+                    const pickupDate = new Date(reservation.pickup_date);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    pickupDate.setHours(0, 0, 0, 0);
+                    const isFuture = pickupDate > today;
+                    return isFuture ? (
+                      <span className="text-xs text-gray-500 italic">
+                        Check-out διαθέσιμο από {formatDateStr(reservation.pickup_date)}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleDirectCheckOut(reservation)}
+                        disabled={checkingOut === reservation.id}
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        <TruckIcon className="h-4 w-4 mr-1" />
+                        {checkingOut === reservation.id ? 'Αναμονή...' : 'Check-out'}
+                      </button>
+                    );
+                  })()}
                   {reservation.status === 'active' && (
                     <button
                       onClick={() => onCheckIn?.(reservation.id)}
