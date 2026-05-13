@@ -109,10 +109,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   const [searchTerm, setSearchTerm] = useState('');
   const [viewReservation, setViewReservation] = useState<ReservationRow | null>(null);
   const [actionError, setActionError] = useState('');
-  const [actionSuccess, setActionSuccess] = useState('');
   const [changingStatus, setChangingStatus] = useState<string | null>(null);
-  const [checkingOut, setCheckingOut] = useState<string | null>(null);
-  const [checkingIn, setCheckingIn] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   // Edit mode
@@ -256,58 +253,6 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
     }
   };
 
-  const handleDirectCheckOut = async (reservation: ReservationRow) => {
-    setActionError('');
-    setActionSuccess('');
-    const pickupDate = new Date(reservation.pickup_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    pickupDate.setHours(0, 0, 0, 0);
-    if (pickupDate > today) {
-      setActionError('Check-out διαθέσιμο από την ημερομηνία παραλαβής');
-      return;
-    }
-    if (!reservation.vehicle_id) {
-      setActionError('Δεν έχει επιλεγεί όχημα για αυτή την κράτηση');
-      return;
-    }
-    setCheckingOut(reservation.id);
-    try {
-      await reservationService.update(reservation.id, { status: 'active' });
-      await vehicleService.update(reservation.vehicle_id, { status: 'rented' });
-      setReservations(prev =>
-        prev.map(r => (r.id === reservation.id ? { ...r, status: 'active' as const } : r))
-      );
-      setActionSuccess('Check-out ολοκληρώθηκε επιτυχώς');
-      setTimeout(() => setActionSuccess(''), 3000);
-    } catch {
-      setActionError('Αποτυχία check-out. Δοκιμάστε ξανά.');
-    } finally {
-      setCheckingOut(null);
-    }
-  };
-
-  const handleDirectCheckIn = async (reservation: ReservationRow) => {
-    setActionError('');
-    setActionSuccess('');
-    setCheckingIn(reservation.id);
-    try {
-      await reservationService.update(reservation.id, { status: 'completed' });
-      if (reservation.vehicle_id) {
-        await vehicleService.update(reservation.vehicle_id, { status: 'available' });
-      }
-      setReservations(prev =>
-        prev.map(r => (r.id === reservation.id ? { ...r, status: 'completed' as const } : r))
-      );
-      setActionSuccess('Check-in ολοκληρώθηκε επιτυχώς');
-      setTimeout(() => setActionSuccess(''), 3000);
-    } catch {
-      setActionError('Αποτυχία check-in. Δοκιμάστε ξανά.');
-    } finally {
-      setCheckingIn(null);
-    }
-  };
-
   const handleExcelToggle = async (id: string, currentValue: boolean) => {
     const newValue = !currentValue;
     try {
@@ -422,11 +367,6 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
       {actionError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
           {actionError}
-        </div>
-      )}
-      {actionSuccess && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
-          {actionSuccess}
         </div>
       )}
 
@@ -593,36 +533,23 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                   )}
                 </div>
 
-                <div className="flex space-x-2 items-center">
-                  {reservation.status === 'upcoming' && (() => {
-                    const pickupDate = new Date(reservation.pickup_date);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    pickupDate.setHours(0, 0, 0, 0);
-                    const isFuture = pickupDate > today;
-                    return isFuture ? (
-                      <span className="text-xs text-gray-500 italic">
-                        Check-out διαθέσιμο από {formatDateStr(reservation.pickup_date)}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleDirectCheckOut(reservation)}
-                        disabled={checkingOut === reservation.id}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        <TruckIcon className="h-4 w-4 mr-1" />
-                        {checkingOut === reservation.id ? 'Αναμονή...' : 'Check-out'}
-                      </button>
-                    );
-                  })()}
+                <div className="flex space-x-2">
+                  {reservation.status === 'upcoming' && (
+                    <button
+                      onClick={() => onCheckOut?.(reservation.id)}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                    >
+                      <TruckIcon className="h-4 w-4 mr-1" />
+                      Check-out
+                    </button>
+                  )}
                   {reservation.status === 'active' && (
                     <button
-                      onClick={() => handleDirectCheckIn(reservation)}
-                      disabled={checkingIn === reservation.id}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      onClick={() => onCheckIn?.(reservation.id)}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-green-600 hover:bg-green-700 transition-colors"
                     >
                       <CheckIcon className="h-4 w-4 mr-1" />
-                      {checkingIn === reservation.id ? 'Αναμονή...' : 'Check-in'}
+                      Check-in
                     </button>
                   )}
                 </div>
