@@ -109,7 +109,9 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   const [searchTerm, setSearchTerm] = useState('');
   const [viewReservation, setViewReservation] = useState<ReservationRow | null>(null);
   const [actionError, setActionError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
   const [changingStatus, setChangingStatus] = useState<string | null>(null);
+  const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   // Edit mode
@@ -253,6 +255,29 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
     }
   };
 
+  const handleDirectCheckOut = async (reservation: ReservationRow) => {
+    setActionError('');
+    setActionSuccess('');
+    if (!reservation.vehicle_id) {
+      setActionError('Δεν έχει επιλεγεί όχημα για αυτή την κράτηση');
+      return;
+    }
+    setCheckingOut(reservation.id);
+    try {
+      await reservationService.update(reservation.id, { status: 'active' });
+      await vehicleService.update(reservation.vehicle_id, { status: 'rented' });
+      setReservations(prev =>
+        prev.map(r => (r.id === reservation.id ? { ...r, status: 'active' as const } : r))
+      );
+      setActionSuccess('Check-out ολοκληρώθηκε επιτυχώς');
+      setTimeout(() => setActionSuccess(''), 3000);
+    } catch {
+      setActionError('Αποτυχία check-out. Δοκιμάστε ξανά.');
+    } finally {
+      setCheckingOut(null);
+    }
+  };
+
   const handleExcelToggle = async (id: string, currentValue: boolean) => {
     const newValue = !currentValue;
     try {
@@ -367,6 +392,11 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
       {actionError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
           {actionError}
+        </div>
+      )}
+      {actionSuccess && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
+          {actionSuccess}
         </div>
       )}
 
@@ -536,11 +566,12 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                 <div className="flex space-x-2">
                   {reservation.status === 'upcoming' && (
                     <button
-                      onClick={() => onCheckOut?.(reservation.id)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                      onClick={() => handleDirectCheckOut(reservation)}
+                      disabled={checkingOut === reservation.id}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors"
                     >
                       <TruckIcon className="h-4 w-4 mr-1" />
-                      Check-out
+                      {checkingOut === reservation.id ? 'Αναμονή...' : 'Check-out'}
                     </button>
                   )}
                   {reservation.status === 'active' && (
