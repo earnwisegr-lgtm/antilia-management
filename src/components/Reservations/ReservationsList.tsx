@@ -98,6 +98,22 @@ function splitDateTime(isoStr: string): { date: string; time: string } {
   return { date, time };
 }
 
+function calcDaysBetween(startDate: string, endDate: string): number {
+  if (!startDate || !endDate) return 1;
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ey, em, ed] = endDate.split('-').map(Number);
+  const s = Date.UTC(sy, sm - 1, sd);
+  const e = Date.UTC(ey, em - 1, ed);
+  return Math.max(1, Math.round((e - s) / 86400000));
+}
+
+function getSeasonalInsuranceRate(pickupDate: string): number {
+  if (!pickupDate) return 10;
+  const month = parseInt(pickupDate.split('-')[1], 10);
+  if (month === 7 || month === 8) return 15;
+  return 10;
+}
+
 const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheckIn, refreshTrigger }) => {
   const { language } = useLanguage();
   const [reservations, setReservations] = useState<ReservationRow[]>([]);
@@ -231,6 +247,14 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
         });
       }
 
+      // Recalculate pricing
+      const days = calcDaysBetween(editForm.pickupDate, editForm.returnDate);
+      const dailyRate = viewReservation.daily_rate || 0;
+      const insuranceRate = editForm.insuranceType === 'full'
+        ? getSeasonalInsuranceRate(editForm.pickupDate)
+        : 0;
+      const totalAmount = (dailyRate * days) + (insuranceRate * days);
+
       // Update reservation
       await reservationService.update(viewReservation.id, {
         pickup_date: `${editForm.pickupDate}T${editForm.pickupTime}:00`,
@@ -238,6 +262,8 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
         pickup_station_id: editForm.pickupStationId,
         return_station_id: editForm.returnStationId,
         insurance_type: editForm.insuranceType,
+        insurance_rate: insuranceRate,
+        total_amount: totalAmount,
         notes: editForm.notes
       });
 
@@ -850,6 +876,39 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                             </label>
                           </div>
                         </div>
+
+                        {/* Pricing summary */}
+                        {(() => {
+                          const days = calcDaysBetween(editForm.pickupDate, editForm.returnDate);
+                          const dailyRate = viewReservation.daily_rate || 0;
+                          const insuranceRate = editForm.insuranceType === 'full'
+                            ? getSeasonalInsuranceRate(editForm.pickupDate)
+                            : 0;
+                          const dailyTotal = dailyRate * days;
+                          const insuranceTotal = insuranceRate * days;
+                          const grandTotal = dailyTotal + insuranceTotal;
+                          return (
+                            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                              <h3 className="text-sm font-medium text-gray-700 mb-2">Κοστολόγηση</h3>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Ημέρες</span>
+                                <span className="text-gray-900">{days}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Ημερήσιο ({'\u20AC'}{dailyRate.toFixed(2)} x {days})</span>
+                                <span className="text-gray-900">{'\u20AC'}{dailyTotal.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Ασφάλεια ({editForm.insuranceType}) ({'\u20AC'}{insuranceRate.toFixed(2)} x {days})</span>
+                                <span className="text-gray-900">{'\u20AC'}{insuranceTotal.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between text-sm font-bold border-t pt-2">
+                                <span>Σύνολο</span>
+                                <span className="text-green-600">{'\u20AC'}{grandTotal.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Σημειώσεις</label>
