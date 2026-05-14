@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { reservationService, customerService, stationService, vehicleService } from '../../lib/database';
+import { reservationService, customerService, stationService, vehicleService, pricingService } from '../../lib/database';
 import { format } from 'date-fns';
 import { el } from 'date-fns/locale';
 import {
@@ -15,7 +15,7 @@ import {
   PencilSquareIcon
 } from '@heroicons/react/24/outline';
 import ContractGenerator from '../PDF/ContractGenerator';
-import type { Station } from '../../types';
+import type { Station, Vehicle, Pricing, Reservation } from '../../types';
 
 interface ReservationRow {
   id: string;
@@ -74,6 +74,9 @@ interface EditFormData {
   pickupStationId: string;
   returnStationId: string;
   insuranceType: string;
+  vehicleId: string;
+  dailyRate: number;
+  category: string;
   notes: string;
 }
 
@@ -134,6 +137,8 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [stations, setStations] = useState<Station[]>([]);
+  const [editVehicles, setEditVehicles] = useState<Vehicle[]>([]);
+  const [editPricing, setEditPricing] = useState<Pricing[]>([]);
 
   const fetchReservations = useCallback(async () => {
     setLoading(true);
@@ -204,6 +209,9 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   const startEditing = (reservation: ReservationRow) => {
     const pickup = splitDateTime(reservation.pickup_date);
     const ret = splitDateTime(reservation.return_date);
+    Promise.all([vehicleService.getAll(), pricingService.getPricing()])
+      .then(([v, p]) => { setEditVehicles(v); setEditPricing(p); })
+      .catch(() => {});
     setEditForm({
       customerName: reservation.customer?.name || '',
       phone: reservation.customer?.phone || '',
@@ -218,6 +226,9 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
       pickupStationId: reservation.pickup_station_id || '',
       returnStationId: reservation.return_station_id || '',
       insuranceType: reservation.insurance_type || 'basic',
+      vehicleId: reservation.vehicle_id || '',
+      dailyRate: reservation.daily_rate || 0,
+      category: reservation.category || '',
       notes: reservation.notes || ''
     });
     setSaveError('');
@@ -249,7 +260,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
 
       // Recalculate pricing
       const days = calcDaysBetween(editForm.pickupDate, editForm.returnDate);
-      const dailyRate = viewReservation.daily_rate || 0;
+      const dailyRate = editForm.dailyRate || 0;
       const insuranceRate = editForm.insuranceType === 'full'
         ? getSeasonalInsuranceRate(editForm.pickupDate)
         : 0;
@@ -261,6 +272,9 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
         return_date: `${editForm.returnDate}T${editForm.returnTime}:00`,
         pickup_station_id: editForm.pickupStationId,
         return_station_id: editForm.returnStationId,
+        vehicle_id: editForm.vehicleId || undefined,
+        category: editForm.category,
+        daily_rate: dailyRate,
         insurance_type: editForm.insuranceType,
         insurance_rate: insuranceRate,
         total_amount: totalAmount,
@@ -850,6 +864,53 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                         </div>
 
                         <div>
+                          <h3 className="text-sm font-medium text-gray-700 mb-3">Όχημα</h3>
+                          <select
+                            value={editForm.vehicleId}
+                            onChange={(e) => {
+                              const selectedVehicle = editVehicles.find(v => v.id === e.target.value);
+                              if (selectedVehicle) {
+                                const rate = editPricing.find(p => p.category === selectedVehicle.category);
+                                setEditForm({
+                                  ...editForm,
+                                  vehicleId: selectedVehicle.id,
+                                  category: selectedVehicle.category,
+                                  dailyRate: rate ? Number(rate.daily_rate) : editForm.dailyRate
+                                });
+                              } else {
+                                setEditForm({ ...editForm, vehicleId: '', category: '', dailyRate: 0 });
+                              }
+                            }}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">-- Επιλέξτε όχημα --</option>
+                            {editVehicles.map(v => {
+                              const isCurrentVehicle = v.id === viewReservation.vehicle_id;
+                              const hasOverlap = !isCurrentVehicle && (() => {
+                                if (!editForm.pickupDate || !editForm.returnDate) return false;
+                                const newStart = new Date(editForm.pickupDate).getTime();
+                                const newEnd = new Date(editForm.returnDate).getTime();
+                                return reservations.some(r => {
+                                  if (r.vehicle_id !== v.id) return false;
+                                  if (r.id === viewReservation.id) return false;
+                                  if (r.status !== 'upcoming' && r.status !== 'active') return false;
+                                  const rStart = new Date(r.pickup_date).getTime();
+                                  const rEnd = new Date(r.return_date).getTime();
+                                  return newStart < rEnd && newEnd > rStart;
+                                });
+                              })();
+                              const isUnavailable = (v.status !== 'available' && !isCurrentVehicle) || hasOverlap;
+                              const rate = editPricing.find(p => p.category === v.category);
+                              return (
+                                <option key={v.id} value={v.id} disabled={isUnavailable}>
+                                  {v.plate} - {v.brand} {v.model} ({v.category}) - {'\u20AC'}{rate ? Number(rate.daily_rate) : 0}/ημ.{isUnavailable ? ' [Μη διαθέσιμο]' : ''}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <div>
                           <h3 className="text-sm font-medium text-gray-700 mb-3">Ασφάλεια</h3>
                           <div className="flex space-x-4">
                             <label className="flex items-center">
@@ -880,7 +941,7 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
                         {/* Pricing summary */}
                         {(() => {
                           const days = calcDaysBetween(editForm.pickupDate, editForm.returnDate);
-                          const dailyRate = viewReservation.daily_rate || 0;
+                          const dailyRate = editForm.dailyRate || 0;
                           const insuranceRate = editForm.insuranceType === 'full'
                             ? getSeasonalInsuranceRate(editForm.pickupDate)
                             : 0;
