@@ -10,14 +10,17 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline';
+import VehicleReservationsModal from './VehicleReservationsModal';
 
 const FleetManagement: React.FC = () => {
   const { t } = useLanguage();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
@@ -121,6 +124,14 @@ const FleetManagement: React.FC = () => {
         </div>
       )}
 
+      {/* Vehicle Reservations Modal */}
+      {selectedVehicle && (
+        <VehicleReservationsModal
+          vehicle={selectedVehicle}
+          onClose={() => setSelectedVehicle(null)}
+        />
+      )}
+
       {/* Fleet Grid */}
       {vehicles.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -183,9 +194,15 @@ const FleetManagement: React.FC = () => {
                   </div>
 
                   <div className="flex space-x-2">
-                    <button className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                      <PencilIcon className="h-4 w-4 mr-1" />
-                      Επεξεργασία
+                    <button
+                      onClick={() => setSelectedVehicle(vehicle)}
+                      className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 transition-colors"
+                    >
+                      <CalendarDaysIcon className="h-4 w-4 mr-1" />
+                      Κρατήσεις
+                    </button>
+                    <button className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                      <PencilIcon className="h-4 w-4" />
                     </button>
                     <button className="inline-flex items-center px-3 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 transition-colors">
                       <TrashIcon className="h-4 w-4" />
