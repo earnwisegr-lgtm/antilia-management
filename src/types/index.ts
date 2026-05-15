@@ -28,7 +28,7 @@ export interface Vehicle {
   year: number;
   transmission: 'manual' | 'automatic';
   fuel_type: 'petrol' | 'diesel';
-  status: 'available' | 'reserved' | 'service';
+  status: 'available' | 'reserved' | 'rented' | 'service' | 'inactive';
   insurance_expiry?: string;
   inspection_expiry?: string;
   last_service?: string;

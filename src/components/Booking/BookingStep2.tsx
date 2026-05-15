@@ -27,7 +27,7 @@ const BookingStep2: React.FC<BookingStep2Props> = ({ data, updateData }) => {
           pricingService.getPricing(),
           reservationService.getAll()
         ]);
-        setVehicles(vehicleData);
+        setVehicles(vehicleData.filter(v => v.status !== 'inactive'));
         setPricing(pricingData);
         setReservations(reservationData);
       } catch (err) {
