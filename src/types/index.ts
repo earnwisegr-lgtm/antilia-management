@@ -15,7 +15,7 @@ export interface Customer {
   license_number: string;
   birth_date: string;
   notes?: string;
-  source: 'walk-in' | 'phone' | 'instagram';
+  source: 'store' | 'phone' | 'instagram' | 'whatsapp' | 'website' | 'repeat' | 'other' | 'walk-in';
   created_at: string;
 }
 

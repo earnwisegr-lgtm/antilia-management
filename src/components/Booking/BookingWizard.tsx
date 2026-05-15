@@ -210,20 +210,21 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
         }
 
         // 1) Customer
-        const customer = await customerService.create({
+        const customerPayload: any = {
           name: bookingData.customer.name,
           phone: bookingData.customer.phone,
-          email: bookingData.customer.email,
-          country: bookingData.customer.country,
-          license_number: bookingData.customer.licenseNumber,
-          birth_date: bookingData.customer.birthDate,
-          source: bookingData.customer.source as Customer['source']
-        });
+          email: bookingData.customer.email || null,
+          country: bookingData.customer.country || '-',
+          license_number: bookingData.customer.licenseNumber || '-',
+          birth_date: bookingData.customer.birthDate || null,
+          source: bookingData.customer.source || 'store'
+        };
+        const customer = await customerService.create(customerPayload);
 
         // 2) Reservation
-        await reservationService.create({
+        const reservationPayload: any = {
           customer_id: customer.id,
-          vehicle_id: bookingData.vehicleId || undefined,
+          vehicle_id: bookingData.vehicleId || null,
           category: bookingData.category,
           pickup_date: `${bookingData.pickupDate}T${bookingData.pickupTime}:00`,
           return_date: `${bookingData.returnDate}T${bookingData.returnTime}:00`,
@@ -233,9 +234,11 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
           insurance_type: bookingData.insuranceType,
           insurance_rate: bookingData.insuranceRate,
           total_amount: pricing.grandTotal,
-          notes: bookingData.notes,
-          status: 'upcoming'
-        });
+          notes: bookingData.notes || '',
+          status: 'upcoming',
+          excel_updated: false
+        };
+        await reservationService.create(reservationPayload);
 
         onComplete?.();
       } catch (error) {
