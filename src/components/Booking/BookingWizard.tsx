@@ -184,11 +184,13 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [existingCustomerFound, setExistingCustomerFound] = useState(false);
 
   const handleComplete = () => {
     const saveBooking = async () => {
       setSaving(true);
       setSaveError('');
+      setExistingCustomerFound(false);
       try {
         // Final overlap check before saving
         if (bookingData.vehicleId) {
@@ -209,17 +211,28 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
           }
         }
 
-        // 1) Customer
-        const customerPayload: any = {
-          name: bookingData.customer.name,
-          phone: bookingData.customer.phone,
-          email: bookingData.customer.email || null,
-          country: bookingData.customer.country || '-',
-          license_number: bookingData.customer.licenseNumber || '-',
-          birth_date: bookingData.customer.birthDate || null,
-          source: bookingData.customer.source || 'store'
-        };
-        const customer = await customerService.create(customerPayload);
+        // 1) Customer - check for existing by phone or email
+        let customer;
+        const existingCustomer = await customerService.findByPhoneOrEmail(
+          bookingData.customer.phone,
+          bookingData.customer.email
+        );
+
+        if (existingCustomer) {
+          customer = existingCustomer;
+          setExistingCustomerFound(true);
+        } else {
+          const customerPayload: any = {
+            name: bookingData.customer.name,
+            phone: bookingData.customer.phone,
+            email: bookingData.customer.email || null,
+            country: bookingData.customer.country || '-',
+            license_number: bookingData.customer.licenseNumber || '-',
+            birth_date: bookingData.customer.birthDate || null,
+            source: bookingData.customer.source || 'store'
+          };
+          customer = await customerService.create(customerPayload);
+        }
 
         // 2) Reservation
         const reservationPayload: any = {
@@ -327,6 +340,9 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
             </button>
           ) : (
             <div className="flex items-center gap-3">
+              {existingCustomerFound && (
+                <span className="text-sm text-blue-600">Βρέθηκε υπάρχων πελάτης</span>
+              )}
               {saveError && (
                 <span className="text-sm text-red-600">{saveError}</span>
               )}

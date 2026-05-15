@@ -61,6 +61,30 @@ export const customerService = {
     return data || [];
   },
 
+  async findByPhoneOrEmail(phone: string, email: string): Promise<Customer | null> {
+    if (isDemo) {
+      const match = mockCustomers.find(
+        c => (phone && c.phone === phone) || (email && c.email === email)
+      );
+      return Promise.resolve(match || null);
+    }
+
+    const filters: string[] = [];
+    if (phone) filters.push(`phone.eq.${phone}`);
+    if (email) filters.push(`email.eq.${email}`);
+    if (filters.length === 0) return null;
+
+    const { data, error } = await supabase!
+      .from('customers')
+      .select('*')
+      .or(filters.join(','))
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  },
+
   async create(customer: Omit<Customer, 'id' | 'created_at'>): Promise<Customer> {
     if (isDemo) {
       const newCustomer: Customer = {
