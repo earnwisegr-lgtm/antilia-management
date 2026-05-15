@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { vehicleService } from '../../lib/database';
+import { supabase } from '../../lib/supabase';
 import type { Vehicle } from '../../types';
 import {
   TruckIcon,
@@ -17,6 +18,47 @@ import VehicleReservationsModal from './VehicleReservationsModal';
 
 type FleetFilter = 'active' | 'inactive' | 'all';
 
+async function recalculateStatuses(vehicles: Vehicle[]): Promise<Vehicle[]> {
+  if (!supabase) return vehicles;
+
+  const { data: activeReservations } = await supabase
+    .from('reservations')
+    .select('vehicle_id')
+    .eq('status', 'active');
+
+  const rentedVehicleIds = new Set(
+    (activeReservations || []).map(r => r.vehicle_id).filter(Boolean)
+  );
+
+  const updates: { id: string; newStatus: Vehicle['status'] }[] = [];
+
+  const corrected = vehicles.map(v => {
+    if (v.status === 'inactive') return v;
+
+    let correctStatus: Vehicle['status'];
+    if (rentedVehicleIds.has(v.id)) {
+      correctStatus = 'rented';
+    } else {
+      correctStatus = 'available';
+    }
+
+    if (v.status !== correctStatus) {
+      updates.push({ id: v.id, newStatus: correctStatus });
+      return { ...v, status: correctStatus };
+    }
+    return v;
+  });
+
+  for (const { id, newStatus } of updates) {
+    await supabase
+      .from('vehicles')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', id);
+  }
+
+  return corrected;
+}
+
 const FleetManagement: React.FC = () => {
   const { t } = useLanguage();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -31,7 +73,8 @@ const FleetManagement: React.FC = () => {
     setError('');
     try {
       const data = await vehicleService.getAll();
-      setVehicles(data);
+      const synced = await recalculateStatuses(data);
+      setVehicles(synced);
     } catch (err) {
       console.error('Failed to load vehicles:', err);
       setError('Αποτυχία φόρτωσης οχημάτων.');
