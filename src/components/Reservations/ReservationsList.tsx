@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLanguage } from '../../contexts/LanguageContext';
 import { reservationService, customerService, stationService, vehicleService, pricingService } from '../../lib/database';
-import { format } from 'date-fns';
-import { el } from 'date-fns/locale';
 import {
   EyeIcon,
   TruckIcon,
@@ -95,9 +92,9 @@ const statusOptions: { value: string; labelEl: string }[] = [
 
 function splitDateTime(isoStr: string): { date: string; time: string } {
   if (!isoStr) return { date: '', time: '09:00' };
-  const d = new Date(isoStr);
-  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const [datePart, timePart] = isoStr.split('T');
+  const date = datePart || '';
+  const time = timePart ? timePart.substring(0, 5) : '09:00';
   return { date, time };
 }
 
@@ -118,7 +115,6 @@ function getSeasonalInsuranceRate(pickupDate: string): number {
 }
 
 const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheckIn, refreshTrigger }) => {
-  const { language } = useLanguage();
   const [reservations, setReservations] = useState<ReservationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -388,13 +384,11 @@ const ReservationsList: React.FC<ReservationsListProps> = ({ onCheckOut, onCheck
   });
 
   const formatDateStr = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr), 'dd/MM/yyyy HH:mm', {
-        locale: language === 'el' ? el : undefined
-      });
-    } catch {
-      return dateStr;
-    }
+    if (!dateStr) return '-';
+    const { date, time } = splitDateTime(dateStr);
+    if (!date) return dateStr;
+    const [y, m, d] = date.split('-');
+    return `${d}/${m}/${y} ${time}`;
   };
 
   if (loading && reservations.length === 0) {
