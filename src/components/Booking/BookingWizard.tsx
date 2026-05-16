@@ -184,85 +184,106 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [existingCustomerFound, setExistingCustomerFound] = useState(false);
+  const [duplicateCustomer, setDuplicateCustomer] = useState<Customer | null>(null);
+  const [customerChoice, setCustomerChoice] = useState<'existing' | 'new'>('existing');
+
+  const checkAndComplete = async () => {
+    setSaveError('');
+    setDuplicateCustomer(null);
+
+    const existing = await customerService.findByPhoneOrEmail(
+      bookingData.customer.phone,
+      bookingData.customer.email
+    );
+
+    if (existing) {
+      setDuplicateCustomer(existing);
+      setCustomerChoice('existing');
+      return;
+    }
+
+    saveBooking(null);
+  };
+
+  const confirmAndSave = () => {
+    if (customerChoice === 'existing' && duplicateCustomer) {
+      saveBooking(duplicateCustomer);
+    } else {
+      saveBooking(null);
+    }
+    setDuplicateCustomer(null);
+  };
+
+  const saveBooking = async (reuseCustomer: Customer | null) => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      // Final overlap check before saving
+      if (bookingData.vehicleId) {
+        const allReservations: Reservation[] = await reservationService.getAll();
+        const newStart = new Date(bookingData.pickupDate).getTime();
+        const newEnd = new Date(bookingData.returnDate).getTime();
+        const hasConflict = allReservations.some(r => {
+          if (r.vehicle_id !== bookingData.vehicleId) return false;
+          if (r.status !== 'upcoming' && r.status !== 'active') return false;
+          const rStart = new Date(r.pickup_date).getTime();
+          const rEnd = new Date(r.return_date).getTime();
+          return newStart < rEnd && newEnd > rStart;
+        });
+        if (hasConflict) {
+          setSaveError('Το όχημα δεν είναι διαθέσιμο για τις επιλεγμένες ημερομηνίες');
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 1) Customer
+      let customer;
+      if (reuseCustomer) {
+        customer = reuseCustomer;
+      } else {
+        const customerPayload: any = {
+          name: bookingData.customer.name,
+          phone: bookingData.customer.phone,
+          email: bookingData.customer.email || null,
+          country: bookingData.customer.country || '-',
+          license_number: bookingData.customer.licenseNumber || '-',
+          birth_date: bookingData.customer.birthDate || null,
+          source: bookingData.customer.source || 'store'
+        };
+        customer = await customerService.create(customerPayload);
+      }
+
+      // 2) Reservation
+      const reservationPayload: any = {
+        customer_id: customer.id,
+        vehicle_id: bookingData.vehicleId || null,
+        category: bookingData.category,
+        pickup_date: `${bookingData.pickupDate}T${bookingData.pickupTime}:00`,
+        return_date: `${bookingData.returnDate}T${bookingData.returnTime}:00`,
+        pickup_station_id: bookingData.pickupStation,
+        return_station_id: bookingData.returnStation,
+        daily_rate: pricing.rate,
+        insurance_type: bookingData.insuranceType,
+        insurance_rate: bookingData.insuranceRate,
+        total_amount: pricing.grandTotal,
+        notes: bookingData.notes || '',
+        status: 'upcoming',
+        excel_updated: false
+      };
+      await reservationService.create(reservationPayload);
+
+      onComplete?.();
+    } catch (error) {
+      console.error('Booking creation failed:', error);
+      setSaveError('Αποτυχία δημιουργίας κράτησης. Παρακαλώ δοκιμάστε ξανά.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleComplete = () => {
-    const saveBooking = async () => {
-      setSaving(true);
-      setSaveError('');
-      setExistingCustomerFound(false);
-      try {
-        // Final overlap check before saving
-        if (bookingData.vehicleId) {
-          const allReservations: Reservation[] = await reservationService.getAll();
-          const newStart = new Date(bookingData.pickupDate).getTime();
-          const newEnd = new Date(bookingData.returnDate).getTime();
-          const hasConflict = allReservations.some(r => {
-            if (r.vehicle_id !== bookingData.vehicleId) return false;
-            if (r.status !== 'upcoming' && r.status !== 'active') return false;
-            const rStart = new Date(r.pickup_date).getTime();
-            const rEnd = new Date(r.return_date).getTime();
-            return newStart < rEnd && newEnd > rStart;
-          });
-          if (hasConflict) {
-            setSaveError('Το όχημα δεν είναι διαθέσιμο για τις επιλεγμένες ημερομηνίες');
-            setSaving(false);
-            return;
-          }
-        }
-
-        // 1) Customer - check for existing by phone or email
-        let customer;
-        const existingCustomer = await customerService.findByPhoneOrEmail(
-          bookingData.customer.phone,
-          bookingData.customer.email
-        );
-
-        if (existingCustomer) {
-          customer = existingCustomer;
-          setExistingCustomerFound(true);
-        } else {
-          const customerPayload: any = {
-            name: bookingData.customer.name,
-            phone: bookingData.customer.phone,
-            email: bookingData.customer.email || null,
-            country: bookingData.customer.country || '-',
-            license_number: bookingData.customer.licenseNumber || '-',
-            birth_date: bookingData.customer.birthDate || null,
-            source: bookingData.customer.source || 'store'
-          };
-          customer = await customerService.create(customerPayload);
-        }
-
-        // 2) Reservation
-        const reservationPayload: any = {
-          customer_id: customer.id,
-          vehicle_id: bookingData.vehicleId || null,
-          category: bookingData.category,
-          pickup_date: `${bookingData.pickupDate}T${bookingData.pickupTime}:00`,
-          return_date: `${bookingData.returnDate}T${bookingData.returnTime}:00`,
-          pickup_station_id: bookingData.pickupStation,
-          return_station_id: bookingData.returnStation,
-          daily_rate: pricing.rate,
-          insurance_type: bookingData.insuranceType,
-          insurance_rate: bookingData.insuranceRate,
-          total_amount: pricing.grandTotal,
-          notes: bookingData.notes || '',
-          status: 'upcoming',
-          excel_updated: false
-        };
-        await reservationService.create(reservationPayload);
-
-        onComplete?.();
-      } catch (error) {
-        console.error('Booking creation failed:', error);
-        setSaveError('Αποτυχία δημιουργίας κράτησης. Παρακαλώ δοκιμάστε ξανά.');
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    saveBooking();
+    checkAndComplete();
   };
 
   return (
@@ -340,9 +361,6 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
             </button>
           ) : (
             <div className="flex items-center gap-3">
-              {existingCustomerFound && (
-                <span className="text-sm text-blue-600">Βρέθηκε υπάρχων πελάτης</span>
-              )}
               {saveError && (
                 <span className="text-sm text-red-600">{saveError}</span>
               )}
@@ -357,6 +375,58 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
           )}
         </div>
       </div>
+
+      {/* Duplicate customer warning */}
+      {duplicateCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-50" onClick={() => setDuplicateCustomer(null)} />
+          <div className="relative bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-5 z-10">
+            <p className="text-sm font-medium text-amber-700 mb-2">
+              Υπάρχει ήδη πελάτης με αυτά τα στοιχεία
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              {duplicateCustomer.name} &mdash; {duplicateCustomer.phone}
+            </p>
+            <div className="space-y-2 mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="customerChoice"
+                  checked={customerChoice === 'existing'}
+                  onChange={() => setCustomerChoice('existing')}
+                  className="text-blue-600"
+                />
+                <span className="text-sm text-gray-800">Χρήση υπάρχοντος πελάτη</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="customerChoice"
+                  checked={customerChoice === 'new'}
+                  onChange={() => setCustomerChoice('new')}
+                  className="text-blue-600"
+                />
+                <span className="text-sm text-gray-800">Δημιουργία νέου πελάτη</span>
+              </label>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDuplicateCustomer(null)}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Ακύρωση
+              </button>
+              <button
+                onClick={confirmAndSave}
+                disabled={saving}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? 'Αποθήκευση...' : 'Συνέχεια'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
