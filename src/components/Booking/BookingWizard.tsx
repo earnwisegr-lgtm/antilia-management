@@ -185,11 +185,12 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [duplicateCustomer, setDuplicateCustomer] = useState<Customer | null>(null);
-  const [customerChoice, setCustomerChoice] = useState<'existing' | 'new'>('existing');
+  const [customerChoice, setCustomerChoice] = useState<'existing' | 'new' | null>(null);
 
   const checkAndComplete = async () => {
     setSaveError('');
     setDuplicateCustomer(null);
+    setCustomerChoice(null);
 
     const existing = await customerService.findByPhoneOrEmail(
       bookingData.customer.phone,
@@ -198,7 +199,6 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
 
     if (existing) {
       setDuplicateCustomer(existing);
-      setCustomerChoice('existing');
       return;
     }
 
@@ -208,7 +208,7 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
   const confirmAndSave = () => {
     if (customerChoice === 'existing' && duplicateCustomer) {
       saveBooking(duplicateCustomer);
-    } else {
+    } else if (customerChoice === 'new') {
       saveBooking(null);
     }
     setDuplicateCustomer(null);
@@ -380,35 +380,52 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
       {duplicateCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-gray-900 bg-opacity-50" onClick={() => setDuplicateCustomer(null)} />
-          <div className="relative bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-5 z-10">
-            <p className="text-sm font-medium text-amber-700 mb-2">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-5 z-10">
+            <p className="text-sm font-semibold text-amber-700 mb-3">
               Υπάρχει ήδη πελάτης με αυτά τα στοιχεία
             </p>
-            <p className="text-sm text-gray-600 mb-4">
-              {duplicateCustomer.name} &mdash; {duplicateCustomer.phone}
-            </p>
+
             <div className="space-y-2 mb-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label
+                className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
+                  customerChoice === 'existing' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                }`}
+              >
                 <input
                   type="radio"
                   name="customerChoice"
                   checked={customerChoice === 'existing'}
                   onChange={() => setCustomerChoice('existing')}
-                  className="text-blue-600"
+                  className="mt-0.5"
                 />
-                <span className="text-sm text-gray-800">Χρήση υπάρχοντος πελάτη</span>
+                <div>
+                  <span className="text-sm font-medium text-gray-900">Χρήση υπάρχοντος πελάτη</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {duplicateCustomer.name} &mdash; {duplicateCustomer.phone}
+                  </p>
+                </div>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label
+                className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
+                  customerChoice === 'new' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                }`}
+              >
                 <input
                   type="radio"
                   name="customerChoice"
                   checked={customerChoice === 'new'}
                   onChange={() => setCustomerChoice('new')}
-                  className="text-blue-600"
+                  className="mt-0.5"
                 />
-                <span className="text-sm text-gray-800">Δημιουργία νέου πελάτη</span>
+                <div>
+                  <span className="text-sm font-medium text-gray-900">Δημιουργία νέου πελάτη</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {bookingData.customer.name} &mdash; {bookingData.customer.phone}
+                  </p>
+                </div>
               </label>
             </div>
+
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setDuplicateCustomer(null)}
@@ -418,8 +435,8 @@ const BookingWizard: React.FC<BookingWizardProps> = ({ onComplete }) => {
               </button>
               <button
                 onClick={confirmAndSave}
-                disabled={saving}
-                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                disabled={saving || customerChoice === null}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Αποθήκευση...' : 'Συνέχεια'}
               </button>
